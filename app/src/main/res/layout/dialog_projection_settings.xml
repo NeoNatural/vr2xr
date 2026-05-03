@@ -85,4 +85,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/player_dialog_row_spacing"
         android:text="@string/projection_settings_more_coming_soon" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/projectionResetFovButton"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/player_dialog_row_spacing"
+        android:text="@string/projection_fov_reset_default" />
 </LinearLayout>

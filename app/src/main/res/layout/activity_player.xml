@@ -45,6 +45,28 @@
                 android:layout_weight="1"
                 android:contentDescription="@string/projection_settings_content_description"
                 app:icon="@android:drawable/ic_menu_slideshow" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/fovDecreaseButton"
+                style="@style/Widget.Vr2xr.Player.IconOnlyButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/player_controls_row_spacing"
+                android:layout_weight="1"
+                android:contentDescription="@string/projection_fov_decrease_content_description"
+                android:text="@string/projection_fov_decrease"
+                app:icon="@null" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/fovIncreaseButton"
+                style="@style/Widget.Vr2xr.Player.IconOnlyButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/player_controls_row_spacing"
+                android:layout_weight="1"
+                android:contentDescription="@string/projection_fov_increase_content_description"
+                android:text="@string/projection_fov_increase"
+                app:icon="@null" />
         </LinearLayout>
 
         <LinearLayout

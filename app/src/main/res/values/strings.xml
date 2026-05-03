@@ -28,6 +28,11 @@
     <string name="projection_fov_title">FOV</string>
     <string name="projection_fov_default_value">95\u00B0</string>
     <string name="projection_fov_value_format">%1$.0f\u00B0</string>
+    <string name="projection_fov_decrease">FOV -</string>
+    <string name="projection_fov_increase">FOV +</string>
+    <string name="projection_fov_decrease_content_description">Decrease FOV by 1 degree</string>
+    <string name="projection_fov_increase_content_description">Increase FOV by 1 degree</string>
+    <string name="projection_fov_reset_default">Reset default FOV (95\u00B0)</string>
     <string name="projection_settings_more_coming_soon">More projection modes coming soon</string>
     <string name="status_glasses_required">Select VR SBS content\nafter connecting glasses</string>
     <string name="dex_mode_warning">Samsung DeX is not supported. For best results, turn off DeX and enable screen mirroring so controls stay on phone and video plays in glasses.</string>

@@ -103,6 +103,7 @@ class PlayerActivity : AppCompatActivity() {
     private var isTimelineScrubbing = false
     private var pendingTimelinePositionMs = 0L
     private var selectedProjectionIndex = 0
+    private var projectionFovSliderOnChangeCount = 0
     private var lastTouchpadX = 0f
     private var lastTouchpadY = 0f
     private var touchpadNormalizedX = 0f
@@ -291,6 +292,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val TAG = "PlayerActivity"
         const val EXTRA_SOURCE = "extra_source"
         const val EXTRA_RESUME_EXISTING = "extra_resume_existing"
     }
@@ -359,6 +361,12 @@ class PlayerActivity : AppCompatActivity() {
     private fun setupControls() {
         binding.glassesSettingsButton.setOnClickListener { showGlassesSettingsPopup() }
         binding.projectionSettingsButton.setOnClickListener { showProjectionSettingsPopup() }
+        binding.fovDecreaseButton.setOnClickListener {
+            adjustProjectionFovByStep(-ProjectionFovConfig.STEP_DEGREES)
+        }
+        binding.fovIncreaseButton.setOnClickListener {
+            adjustProjectionFovByStep(ProjectionFovConfig.STEP_DEGREES)
+        }
         binding.seekBackButton.setOnClickListener { seekBy(-SEEK_INTERVAL_MS) }
         binding.playPauseButton.setOnClickListener { togglePlayPause() }
         binding.seekForwardButton.setOnClickListener { seekBy(SEEK_INTERVAL_MS) }
@@ -671,6 +679,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun showProjectionSettingsPopup() {
+        Log.i(TAG, "Opening projection settings dialog")
         val dialogBinding = DialogProjectionSettingsBinding.inflate(layoutInflater)
         dialogBinding.projectionHalfEquirectangularOption.isChecked = selectedProjectionIndex == 0
         dialogBinding.projectionOptionsGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -682,6 +691,13 @@ class PlayerActivity : AppCompatActivity() {
             slider = dialogBinding.projectionFovSlider,
             valueLabel = dialogBinding.projectionFovValueText
         )
+        dialogBinding.projectionResetFovButton.setOnClickListener {
+            applyProjectionFov(ProjectionFovConfig.DEFAULT_DEGREES)
+            val normalized = ProjectionFovConfig.normalizeDegrees(renderMode.perEyeFovDegrees)
+            dialogBinding.projectionFovSlider.value = normalized
+            dialogBinding.projectionFovValueText.text = formatProjectionFovValue(normalized)
+            Log.i(TAG, "Projection FOV reset to default: $normalized")
+        }
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.projection_settings_title)
@@ -714,6 +730,8 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun bindProjectionFovSlider(slider: Slider, valueLabel: TextView) {
         val currentFov = ProjectionFovConfig.normalizeDegrees(renderMode.perEyeFovDegrees)
+        projectionFovSliderOnChangeCount = 0
+        Log.i(TAG, "Projection slider init value=$currentFov")
         slider.clearOnChangeListeners()
         slider.clearOnSliderTouchListeners()
         slider.valueFrom = ProjectionFovConfig.MIN_DEGREES
@@ -722,13 +740,24 @@ class PlayerActivity : AppCompatActivity() {
         slider.value = currentFov
         valueLabel.text = formatProjectionFovValue(currentFov)
         slider.addOnChangeListener { _, value, fromUser ->
+            projectionFovSliderOnChangeCount += 1
             val normalized = ProjectionFovConfig.normalizeDegrees(value)
             valueLabel.text = formatProjectionFovValue(normalized)
+            Log.d(
+                TAG,
+                "Projection slider onChange count=$projectionFovSliderOnChangeCount, value=$normalized, fromUser=$fromUser"
+            )
             if (!fromUser) {
                 return@addOnChangeListener
             }
             applyProjectionFov(normalized)
         }
+    }
+
+    private fun adjustProjectionFovByStep(delta: Float) {
+        val updatedValue = ProjectionFovConfig.normalizeDegrees(renderMode.perEyeFovDegrees + delta)
+        applyProjectionFov(updatedValue)
+        Log.i(TAG, "Projection FOV adjusted from player controls to $updatedValue")
     }
 
     private fun loadPersistedProjectionFov(): Float {

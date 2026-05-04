@@ -7,7 +7,6 @@ import android.opengl.GLSurfaceView
 import android.view.Surface
 import com.vr2xr.render.gl.GlUtil
 import com.vr2xr.tracking.PoseState
-import com.vr2xr.tracking.toRotationMatrix3x3
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer

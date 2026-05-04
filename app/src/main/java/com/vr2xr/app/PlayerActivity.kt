@@ -80,6 +80,7 @@ class PlayerActivity : AppCompatActivity() {
     private var latestPose: PoseState = PoseState()
     private val runtimePoseController = RuntimePoseController(initialSensitivity = DEFAULT_IMU_SENSITIVITY)
     private var trackingSummary: String = ""
+    private var pendingRecenterReferenceSync = false
 
     private var renderMode = RenderMode(perEyeFovDegrees = ProjectionFovConfig.DEFAULT_DEGREES)
     private val errors by lazy { ErrorUiController(this) }
@@ -831,6 +832,10 @@ class PlayerActivity : AppCompatActivity() {
                     return@collect
                 }
                 applyRuntimePose(runtimePoseController.onTrackingPoseUpdated(pose))
+                if (pendingRecenterReferenceSync) {
+                    pendingRecenterReferenceSync = false
+                    applyRuntimePose(runtimePoseController.setReferenceOrientationFromCurrentPose())
+                }
             }
         }
     }
@@ -1228,6 +1233,8 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
         applyRuntimePose(runtimePoseController.resetTouchpadBias())
+        applyRuntimePose(runtimePoseController.setReferenceOrientationFromCurrentPose())
+        pendingRecenterReferenceSync = true
         resetTouchpadIndicator(animate = false)
         runZeroView()
     }

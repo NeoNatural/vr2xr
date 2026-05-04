@@ -18,8 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.cos
-import kotlin.math.sin
 
 data class OneXrConnectionProbe(
     val connected: Boolean,
@@ -92,44 +90,70 @@ class OneXrTrackingSessionManager(
 
 }
 
+
 private fun XrPoseSnapshot.toPoseState(): PoseState {
     val yawRad = relativeOrientation.yaw.toRadians()
     val pitchRad = relativeOrientation.pitch.toRadians()
     val rollRad = relativeOrientation.roll.toRadians()
-    val quaternion = eulerToQuaternion(yawRad, pitchRad, rollRad)
+    val quaternion = tryExtractSdkQuaternion() ?: quaternionFromEuler(yawRad, pitchRad, rollRad)
     return PoseState(
         yaw = yawRad,
         pitch = pitchRad,
         roll = rollRad,
-        qx = quaternion.first,
-        qy = quaternion.second,
-        qz = quaternion.third,
-        qw = quaternion.fourth,
+        qx = quaternion.x,
+        qy = quaternion.y,
+        qz = quaternion.z,
+        qw = quaternion.w,
         trackingAvailable = isCalibrated
     )
+}
+
+private fun XrPoseSnapshot.tryExtractSdkQuaternion(): Quaternion? {
+    val roots = listOf(this) + listOfNotNull(readMember(this, "relativeOrientation"), readMember(this, "orientation"), readMember(this, "pose"))
+    for (root in roots) {
+        val direct = readQuaternionMembers(root, "qx", "qy", "qz", "qw")
+            ?: readQuaternionMembers(root, "x", "y", "z", "w")
+        if (direct != null) return direct
+
+        val nestedCandidates = listOf("quaternion", "rotationQuaternion", "orientationQuaternion", "rot")
+        for (name in nestedCandidates) {
+            val nested = readMember(root, name) ?: continue
+            val nestedQuaternion = readQuaternionMembers(nested, "x", "y", "z", "w")
+                ?: readQuaternionMembers(nested, "qx", "qy", "qz", "qw")
+            if (nestedQuaternion != null) return nestedQuaternion
+        }
+    }
+    return null
+}
+
+private fun readQuaternionMembers(source: Any, x: String, y: String, z: String, w: String): Quaternion? {
+    val qx = readFloatMember(source, x) ?: return null
+    val qy = readFloatMember(source, y) ?: return null
+    val qz = readFloatMember(source, z) ?: return null
+    val qw = readFloatMember(source, w) ?: return null
+    return Quaternion(qx, qy, qz, qw).normalized()
+}
+
+private fun readMember(source: Any, name: String): Any? {
+    val cls = source.javaClass
+    val getterName = "get" + name.replaceFirstChar { it.uppercase() }
+    val getter = cls.methods.firstOrNull { it.parameterCount == 0 && it.name == getterName }
+    if (getter != null) return runCatching { getter.invoke(source) }.getOrNull()
+    val field = cls.fields.firstOrNull { it.name == name }
+    if (field != null) return runCatching { field.get(source) }.getOrNull()
+    return null
+}
+
+private fun readFloatMember(source: Any, name: String): Float? {
+    return when (val v = readMember(source, name)) {
+        is Float -> v
+        is Double -> v.toFloat()
+        is Number -> v.toFloat()
+        else -> null
+    }
 }
 
 private fun Float.toRadians(): Float {
     return Math.toRadians(toDouble()).toFloat()
 }
 
-private fun eulerToQuaternion(yaw: Float, pitch: Float, roll: Float): Quaternion {
-    val cy = cos(yaw * 0.5f)
-    val sy = sin(yaw * 0.5f)
-    val cp = cos(pitch * 0.5f)
-    val sp = sin(pitch * 0.5f)
-    val cr = cos(roll * 0.5f)
-    val sr = sin(roll * 0.5f)
-    val qw = (cr * cp * cy) + (sr * sp * sy)
-    val qx = (sr * cp * cy) - (cr * sp * sy)
-    val qy = (cr * sp * cy) + (sr * cp * sy)
-    val qz = (cr * cp * sy) - (sr * sp * cy)
-    return Quaternion(qx, qy, qz, qw)
-}
-
-private data class Quaternion(
-    val first: Float,
-    val second: Float,
-    val third: Float,
-    val fourth: Float
-)

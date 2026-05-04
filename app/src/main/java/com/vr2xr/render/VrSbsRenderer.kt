@@ -26,8 +26,7 @@ class VrSbsRenderer(
     private var texOffsetHandle: Int = -1
     private var samplerHandle: Int = -1
     private var projectionModeHandle: Int = -1
-    private var headYawHandle: Int = -1
-    private var headPitchHandle: Int = -1
+    private var headRotationHandle: Int = -1
     private var eyeYawOffsetHandle: Int = -1
     private var tanHalfFovXHandle: Int = -1
     private var tanHalfFovYHandle: Int = -1
@@ -86,8 +85,7 @@ class VrSbsRenderer(
         texOffsetHandle = GLES20.glGetUniformLocation(program, "uTexOffsetX")
         samplerHandle = GLES20.glGetUniformLocation(program, "uTexture")
         projectionModeHandle = GLES20.glGetUniformLocation(program, "uProjectionMode")
-        headYawHandle = GLES20.glGetUniformLocation(program, "uHeadYawRad")
-        headPitchHandle = GLES20.glGetUniformLocation(program, "uHeadPitchRad")
+        headRotationHandle = GLES20.glGetUniformLocation(program, "uHeadRotation")
         eyeYawOffsetHandle = GLES20.glGetUniformLocation(program, "uEyeYawOffsetRad")
         tanHalfFovXHandle = GLES20.glGetUniformLocation(program, "uTanHalfFovX")
         tanHalfFovYHandle = GLES20.glGetUniformLocation(program, "uTanHalfFovY")
@@ -131,8 +129,7 @@ class VrSbsRenderer(
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexId)
         GLES20.glUniform1i(samplerHandle, 0)
         GLES20.glUniform1i(projectionModeHandle, mode.projectionMode.toShaderValue())
-        GLES20.glUniform1f(headYawHandle, pose.yaw)
-        GLES20.glUniform1f(headPitchHandle, pose.pitch)
+        GLES20.glUniformMatrix3fv(headRotationHandle, 1, false, pose.orientationQuaternion().toRotationMatrix3x3(), 0)
 
         val halfWidth = outputWidth / 2
         val leftEyeWidth = halfWidth.coerceAtLeast(1)
@@ -223,8 +220,7 @@ varying vec2 vRawCoord;
 uniform float uTexScaleX;
 uniform float uTexOffsetX;
 uniform int uProjectionMode;
-uniform float uHeadYawRad;
-uniform float uHeadPitchRad;
+uniform mat3 uHeadRotation;
 uniform float uEyeYawOffsetRad;
 uniform float uTanHalfFovX;
 uniform float uTanHalfFovY;
@@ -234,32 +230,14 @@ const float PI = 3.1415926535897932384626433832795;
 const float HALF_PI = 1.5707963267948966192313216916398;
 const float TWO_PI = 6.283185307179586476925286766559;
 
-vec3 rotateYaw(vec3 v, float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return vec3(
-        (c * v.x) + (s * v.z),
-        v.y,
-        (-s * v.x) + (c * v.z)
-    );
-}
-
-vec3 rotatePitch(vec3 v, float angle) {
-    float c = cos(angle);
-    float s = sin(angle);
-    return vec3(
-        v.x,
-        (c * v.y) - (s * v.z),
-        (s * v.y) + (c * v.z)
-    );
-}
-
 vec3 makeViewRay(vec2 eyeUv) {
     float ndcX = (eyeUv.x * 2.0) - 1.0;
     float ndcY = 1.0 - (eyeUv.y * 2.0);
     vec3 ray = normalize(vec3(ndcX * uTanHalfFovX, ndcY * uTanHalfFovY, 1.0));
-    ray = rotatePitch(ray, uHeadPitchRad);
-    ray = rotateYaw(ray, uHeadYawRad + uEyeYawOffsetRad);
+    ray = uHeadRotation * ray;
+    float c = cos(uEyeYawOffsetRad);
+    float ss = sin(uEyeYawOffsetRad);
+    ray = vec3((c * ray.x) + (ss * ray.z), ray.y, (-ss * ray.x) + (c * ray.z));
     return ray;
 }
 

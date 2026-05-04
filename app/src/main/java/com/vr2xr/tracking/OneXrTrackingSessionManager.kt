@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class OneXrConnectionProbe(
     val connected: Boolean,
@@ -94,15 +96,15 @@ private fun XrPoseSnapshot.toPoseState(): PoseState {
     val yawRad = relativeOrientation.yaw.toRadians()
     val pitchRad = relativeOrientation.pitch.toRadians()
     val rollRad = relativeOrientation.roll.toRadians()
-    val quaternion = quaternionFromEuler(yawRad, pitchRad, rollRad)
+    val quaternion = eulerToQuaternion(yawRad, pitchRad, rollRad)
     return PoseState(
         yaw = yawRad,
         pitch = pitchRad,
         roll = rollRad,
-        qx = quaternion.x,
-        qy = quaternion.y,
-        qz = quaternion.z,
-        qw = quaternion.w,
+        qx = quaternion.first,
+        qy = quaternion.second,
+        qz = quaternion.third,
+        qw = quaternion.fourth,
         trackingAvailable = isCalibrated
     )
 }
@@ -111,3 +113,23 @@ private fun Float.toRadians(): Float {
     return Math.toRadians(toDouble()).toFloat()
 }
 
+private fun eulerToQuaternion(yaw: Float, pitch: Float, roll: Float): Quaternion {
+    val cy = cos(yaw * 0.5f)
+    val sy = sin(yaw * 0.5f)
+    val cp = cos(pitch * 0.5f)
+    val sp = sin(pitch * 0.5f)
+    val cr = cos(roll * 0.5f)
+    val sr = sin(roll * 0.5f)
+    val qw = (cr * cp * cy) + (sr * sp * sy)
+    val qx = (sr * cp * cy) - (cr * sp * sy)
+    val qy = (cr * sp * cy) + (sr * cp * sy)
+    val qz = (cr * cp * sy) - (sr * sp * cy)
+    return Quaternion(qx, qy, qz, qw)
+}
+
+private data class Quaternion(
+    val first: Float,
+    val second: Float,
+    val third: Float,
+    val fourth: Float
+)

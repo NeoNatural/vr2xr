@@ -1227,7 +1227,9 @@ class PlayerActivity : AppCompatActivity() {
             errors.show(getString(R.string.tracking_recenter_requires_streaming))
             return
         }
-        applyRuntimePose(runtimePoseController.resetTouchpadBias())
+        val biasResetPose = runtimePoseController.resetTouchpadBias()
+        applyRuntimePose(biasResetPose)
+        applyRuntimePose(runtimePoseController.setReferenceOrientation(biasResetPose.orientationQuaternion()))
         resetTouchpadIndicator(animate = false)
         runZeroView()
     }

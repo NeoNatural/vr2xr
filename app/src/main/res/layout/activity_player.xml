@@ -23,7 +23,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1.05"
+            android:layout_weight="0.8"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -72,46 +72,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1.2"
-            android:layout_marginTop="@dimen/player_controls_primary_row_spacing"
-            android:gravity="center"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/seekBackButton"
-                style="@style/Widget.Vr2xr.Player.TransportIconButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginEnd="@dimen/player_controls_transport_spacing"
-                android:layout_weight="1"
-                android:contentDescription="@string/player_seek_back_content_description"
-                app:icon="@android:drawable/ic_media_rew" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/playPauseButton"
-                style="@style/Widget.Vr2xr.Player.PlayPauseButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1.45"
-                android:contentDescription="@string/player_play_content_description"
-                android:gravity="center"
-                app:icon="@android:drawable/ic_media_play" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/seekForwardButton"
-                style="@style/Widget.Vr2xr.Player.TransportIconButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="@dimen/player_controls_transport_spacing"
-                android:layout_weight="1"
-                android:contentDescription="@string/player_seek_forward_content_description"
-                app:icon="@android:drawable/ic_media_ff" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="0.9"
+            android:layout_weight="0.8"
             android:layout_marginTop="@dimen/player_controls_row_spacing"
             android:gravity="center_vertical"
             android:orientation="horizontal">
@@ -155,37 +116,58 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1.35"
-            android:layout_marginTop="@dimen/player_controls_row_spacing"
-            android:gravity="center_vertical"
+            android:layout_weight="1.2"
+            android:layout_marginTop="@dimen/player_controls_primary_row_spacing"
+            android:gravity="center"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/recenterButton"
-                style="@style/Widget.Vr2xr.Player.IconOnlyButton"
+                android:id="@+id/seekBackButton"
+                style="@style/Widget.Vr2xr.Player.TransportIconButton"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/player_controls_transport_spacing"
                 android:layout_weight="1"
-                android:contentDescription="@string/recenter_content_description"
-                app:icon="@android:drawable/ic_menu_compass" />
+                android:contentDescription="@string/player_seek_back_content_description"
+                app:icon="@android:drawable/ic_media_rew" />
 
-            <FrameLayout
-                android:id="@+id/touchpadArea"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/playPauseButton"
+                style="@style/Widget.Vr2xr.Player.PlayPauseButton"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_marginStart="@dimen/player_controls_row_spacing"
-                android:layout_weight="3"
-                android:background="@drawable/bg_player_touchpad"
-                android:contentDescription="@string/player_touchpad_content_description">
+                android:layout_weight="1.45"
+                android:contentDescription="@string/player_play_content_description"
+                android:gravity="center"
+                app:icon="@android:drawable/ic_media_play" />
 
-                <View
-                    android:id="@+id/touchpadIndicator"
-                    android:layout_width="@dimen/player_touchpad_indicator_size"
-                    android:layout_height="@dimen/player_touchpad_indicator_size"
-                    android:layout_gravity="center"
-                    android:background="@drawable/bg_player_touchpad_indicator" />
-            </FrameLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/seekForwardButton"
+                style="@style/Widget.Vr2xr.Player.TransportIconButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/player_controls_transport_spacing"
+                android:layout_weight="1"
+                android:contentDescription="@string/player_seek_forward_content_description"
+                app:icon="@android:drawable/ic_media_ff" />
         </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/touchpadArea"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/player_controls_primary_row_spacing"
+            android:layout_weight="1.7"
+            android:background="@drawable/bg_player_touchpad"
+            android:contentDescription="@string/player_touchpad_content_description">
+
+            <View
+                android:id="@+id/touchpadIndicator"
+                android:layout_width="@dimen/player_touchpad_indicator_size"
+                android:layout_height="@dimen/player_touchpad_indicator_size"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_player_touchpad_indicator" />
+        </FrameLayout>
     </LinearLayout>
 
     <FrameLayout

@@ -51,7 +51,7 @@ class TouchpadAutoDragTest {
         )
 
         val expectedPerStep = RADIANS_PER_SECOND * (INTERVAL_MS / 1000f)
-        assertEquals(expectedPerStep, delta.yawDeltaRad, EPSILON)
+        assertEquals(-expectedPerStep, delta.yawDeltaRad, EPSILON)
         assertEquals(expectedPerStep, delta.pitchDeltaRad, EPSILON)
     }
 
@@ -66,7 +66,7 @@ class TouchpadAutoDragTest {
         )
 
         val expectedPerStep = RADIANS_PER_SECOND * (INTERVAL_MS / 1000f)
-        assertEquals(expectedPerStep, delta.yawDeltaRad, EPSILON)
+        assertEquals(-expectedPerStep, delta.yawDeltaRad, EPSILON)
         assertEquals(0f, delta.pitchDeltaRad, EPSILON)
     }
 }

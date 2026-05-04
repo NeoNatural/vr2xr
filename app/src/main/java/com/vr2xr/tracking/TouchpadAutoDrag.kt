@@ -22,7 +22,7 @@ fun computeTouchpadAutoDragDelta(
     val stepSeconds = intervalMs / 1000f
     return TouchpadAutoDragDelta(
         yawDeltaRad = yawStrength * radiansPerSecond * stepSeconds,
-        pitchDeltaRad = -pitchStrength * radiansPerSecond * stepSeconds
+        pitchDeltaRad = pitchStrength * radiansPerSecond * stepSeconds
     )
 }
 

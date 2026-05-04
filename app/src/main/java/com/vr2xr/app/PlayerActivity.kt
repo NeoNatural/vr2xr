@@ -470,7 +470,7 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
         val yawDelta = (deltaX / maxOffsetX) * TOUCHPAD_DRAG_FULL_TRAVEL_RADIANS
-        val pitchDelta = -(deltaY / maxOffsetY) * TOUCHPAD_DRAG_FULL_TRAVEL_RADIANS
+        val pitchDelta = (deltaY / maxOffsetY) * TOUCHPAD_DRAG_FULL_TRAVEL_RADIANS
         applyRuntimePose(runtimePoseController.applyTouchpadBiasDelta(yawDelta, pitchDelta))
     }
 

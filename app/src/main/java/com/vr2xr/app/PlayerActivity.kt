@@ -1228,6 +1228,7 @@ class PlayerActivity : AppCompatActivity() {
             return
         }
         applyRuntimePose(runtimePoseController.resetTouchpadBias())
+        applyRuntimePose(runtimePoseController.setReferenceOrientationFromCurrentPose())
         resetTouchpadIndicator(animate = false)
         runZeroView()
     }

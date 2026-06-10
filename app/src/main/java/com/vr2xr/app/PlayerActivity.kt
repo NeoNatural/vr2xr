@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
-import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.View
@@ -55,6 +54,7 @@ import io.onexr.XrBiasState
 import io.onexr.XrSessionState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -371,6 +371,7 @@ class PlayerActivity : AppCompatActivity() {
         binding.seekBackButton.setOnClickListener { seekBy(-SEEK_INTERVAL_MS) }
         binding.playPauseButton.setOnClickListener { togglePlayPause() }
         binding.seekForwardButton.setOnClickListener { seekBy(SEEK_INTERVAL_MS) }
+        binding.recenterButton.setOnClickListener { runRecenter() }
         setupTimeline()
         setupTouchpad()
         refreshTimelineUi()
@@ -404,15 +405,6 @@ class PlayerActivity : AppCompatActivity() {
         )
     }
 
-    private val touchpadGestureDetector by lazy {
-        GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDoubleTap(e: MotionEvent): Boolean {
-                runRecenter()
-                return true
-            }
-        })
-    }
-
     private fun setupTouchpad() {
         binding.touchpadArea.post {
             touchpadNormalizedX = 0f
@@ -420,7 +412,6 @@ class PlayerActivity : AppCompatActivity() {
             resetTouchpadIndicator(animate = false)
         }
         binding.touchpadArea.setOnTouchListener { _, event ->
-            touchpadGestureDetector.onTouchEvent(event)
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     lastTouchpadX = event.x
@@ -875,6 +866,8 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun updateTrackingControls() {
+        val isStreaming = latestSessionState is XrSessionState.Streaming
+        binding.recenterButton.isEnabled = isStreaming
     }
 
     private fun updateTrackingSummary() {

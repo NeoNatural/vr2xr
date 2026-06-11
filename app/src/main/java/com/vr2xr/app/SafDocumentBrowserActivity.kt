@@ -11,10 +11,10 @@ import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.vr2xr.R
 import com.vr2xr.databinding.ActivitySafDocumentBrowserBinding
 import com.vr2xr.saf.SafDocumentEntry
+import com.vr2xr.saf.SafDocumentSortOrder
 import com.vr2xr.saf.SafTreePermissionState
 import com.vr2xr.saf.resolveSafTreePermissionState
 import com.vr2xr.saf.sortSafDocumentEntries
@@ -30,6 +30,8 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
     private val trackingManager by lazy { (application as Vr2xrApplication).trackingSessionManager }
     private val docIdStack = ArrayDeque<String>()
     private val folderNameStack = ArrayDeque<String>()
+    private var sortOrder = SafDocumentSortOrder.NEWEST_FIRST
+    private var currentEntries = emptyList<SafDocumentEntry>()
 
     private lateinit var treeUri: Uri
     private lateinit var currentDocumentId: String
@@ -55,6 +57,7 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
 
         binding.safBackButton.setOnClickListener { navigateUpOrFinish() }
         binding.safCloseButton.setOnClickListener { finish() }
+        binding.safSortButton.setOnClickListener { toggleSortOrder() }
         onBackPressedDispatcher.addCallback(this) {
             navigateUpOrFinish()
         }
@@ -84,13 +87,17 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
         binding.safEntriesContainer.removeAllViews()
         binding.safStatusText.text = getString(R.string.saf_loading)
         binding.safCurrentFolderText.text = currentFolderLabel()
+        updateSortButtonText()
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 queryDirectory(currentDocumentId)
             }
             result
-                .onSuccess(::renderEntries)
+                .onSuccess { entries ->
+                    currentEntries = entries
+                    renderEntries(entries)
+                }
                 .onFailure { error ->
                     binding.safEntriesContainer.removeAllViews()
                     binding.safStatusText.text = getString(
@@ -139,19 +146,21 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
                     )
                 }
             } ?: throw IllegalStateException(getString(R.string.saf_error_no_cursor))
-            sortSafDocumentEntries(entries)
+            entries
         }
     }
 
     private fun renderEntries(entries: List<SafDocumentEntry>) {
+        val sortedEntries = sortSafDocumentEntries(entries, sortOrder)
         binding.safEntriesContainer.removeAllViews()
-        binding.safStatusText.text = if (entries.isEmpty()) {
+        binding.safStatusText.text = if (sortedEntries.isEmpty()) {
             getString(R.string.saf_empty_folder)
         } else {
-            getString(R.string.saf_entries_count, entries.size)
+            getString(R.string.saf_entries_count, sortedEntries.size)
         }
+        updateSortButtonText()
 
-        entries.forEach { entry ->
+        sortedEntries.forEach { entry ->
             val label = if (entry.isDirectory) {
                 getString(R.string.saf_folder_prefix, entry.name)
             } else {
@@ -164,9 +173,24 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
                     currentDocumentId = entry.documentId
                     loadCurrentDirectory()
                 } else {
-                    confirmVideoSelection(entry)
+                    openVideo(entry)
                 }
             }
+        }
+    }
+
+    private fun toggleSortOrder() {
+        sortOrder = when (sortOrder) {
+            SafDocumentSortOrder.NEWEST_FIRST -> SafDocumentSortOrder.OLDEST_FIRST
+            SafDocumentSortOrder.OLDEST_FIRST -> SafDocumentSortOrder.NEWEST_FIRST
+        }
+        renderEntries(currentEntries)
+    }
+
+    private fun updateSortButtonText() {
+        binding.safSortButton.text = when (sortOrder) {
+            SafDocumentSortOrder.NEWEST_FIRST -> getString(R.string.saf_sort_newest_first)
+            SafDocumentSortOrder.OLDEST_FIRST -> getString(R.string.saf_sort_oldest_first)
         }
     }
 
@@ -185,17 +209,6 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
         binding.safEntriesContainer.addView(button, params)
     }
 
-    private fun confirmVideoSelection(entry: SafDocumentEntry) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(entry.name)
-            .setMessage(R.string.saf_play_confirm_message)
-            .setNegativeButton(R.string.saf_cancel, null)
-            .setPositiveButton(R.string.saf_play_action) { _, _ ->
-                openVideo(entry)
-            }
-            .show()
-    }
-
     private fun openVideo(entry: SafDocumentEntry) {
         val source = SourceDescriptor(
             original = entry.uri,
@@ -206,8 +219,13 @@ class SafDocumentBrowserActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val probe = trackingManager.probeConnection()
             if (probe.connected) {
+                val targetActivity = if (shouldLaunchTrackingSetupForSource(trackingManager.sessionState.value)) {
+                    TrackingSetupActivity::class.java
+                } else {
+                    TrackingReadyActivity::class.java
+                }
                 startActivity(
-                    Intent(this@SafDocumentBrowserActivity, TrackingSetupActivity::class.java)
+                    Intent(this@SafDocumentBrowserActivity, targetActivity)
                         .putExtra(PlayerActivity.EXTRA_SOURCE, source)
                 )
             } else {

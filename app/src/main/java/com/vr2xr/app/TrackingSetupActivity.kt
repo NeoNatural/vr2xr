@@ -50,11 +50,6 @@ class TrackingSetupActivity : AppCompatActivity() {
         binding = ActivityTrackingSetupBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (source == null) {
-            finish()
-            return
-        }
-
         binding.runCalibrationButton.setOnClickListener { runCalibration() }
         renderSessionState(XrSessionState.Idle)
     }
@@ -127,16 +122,27 @@ class TrackingSetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun launchReadyStep() {
-        val resolvedSource = source ?: return
+    private fun launchCompletionStep() {
         if (readyPageLaunched) {
             return
         }
         readyPageLaunched = true
-        startActivity(
-            Intent(this, TrackingReadyActivity::class.java)
-                .putExtra(PlayerActivity.EXTRA_SOURCE, resolvedSource)
-        )
+        when (trackingSetupCompletionTarget(hasSource = source != null)) {
+            TrackingSetupCompletionTarget.MAIN -> {
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                )
+            }
+
+            TrackingSetupCompletionTarget.READY -> {
+                val resolvedSource = source ?: return
+                startActivity(
+                    Intent(this, TrackingReadyActivity::class.java)
+                        .putExtra(PlayerActivity.EXTRA_SOURCE, resolvedSource)
+                )
+            }
+        }
         finish()
     }
 
@@ -267,7 +273,7 @@ class TrackingSetupActivity : AppCompatActivity() {
                 calibrationProgressObserved &&
                 currentSessionState is XrSessionState.Streaming
             ) {
-                launchReadyStep()
+                launchCompletionStep()
             } else {
                 completionSequenceStarted = false
                 renderSessionState(currentSessionState)

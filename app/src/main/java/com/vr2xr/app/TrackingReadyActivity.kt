@@ -43,6 +43,9 @@ class TrackingReadyActivity : AppCompatActivity() {
 
         binding.continueButton.setOnClickListener { continueToPlayer() }
         setContinueLoading(loading = false)
+        if (!shouldShowSbsReminder()) {
+            continueToPlayer()
+        }
     }
 
     override fun onStop() {
@@ -61,6 +64,7 @@ class TrackingReadyActivity : AppCompatActivity() {
         if (continueJob != null) {
             return
         }
+        maybeSaveSbsReminderPreference()
         setContinueLoading(loading = true)
         continueJob = uiScope.launch {
             trackingManager.zeroView()
@@ -89,5 +93,24 @@ class TrackingReadyActivity : AppCompatActivity() {
         binding.continueButton.isEnabled = !loading
         binding.continueButton.text = getString(R.string.tracking_ready_continue)
         binding.continueProgressIndicator.visibility = if (loading) View.VISIBLE else View.GONE
+    }
+
+    private fun shouldShowSbsReminder(): Boolean {
+        return !getSharedPreferences(SBS_REMINDER_PREFS_NAME, MODE_PRIVATE)
+            .getBoolean(KEY_HIDE_SBS_REMINDER, false)
+    }
+
+    private fun maybeSaveSbsReminderPreference() {
+        if (binding.doNotShowAgainCheckbox.isChecked) {
+            getSharedPreferences(SBS_REMINDER_PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_HIDE_SBS_REMINDER, true)
+                .apply()
+        }
+    }
+
+    companion object {
+        private const val SBS_REMINDER_PREFS_NAME = "sbs_reminder"
+        private const val KEY_HIDE_SBS_REMINDER = "hide_sbs_reminder"
     }
 }

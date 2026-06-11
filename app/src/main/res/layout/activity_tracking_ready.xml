@@ -38,6 +38,18 @@
             android:contentDescription="@string/xreal_status_icon_content_description"
             android:src="@drawable/ic_glasses_status" />
 
+        <CheckBox
+            android:id="@+id/doNotShowAgainCheckbox"
+            style="@style/TextAppearance.Vr2xr.Launcher.RuntimeStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/setup_status_top_margin"
+            android:buttonTint="@color/launcher_text_primary"
+            android:checked="true"
+            android:text="@string/tracking_ready_do_not_show_again"
+            android:textColor="@color/launcher_text_primary" />
+
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

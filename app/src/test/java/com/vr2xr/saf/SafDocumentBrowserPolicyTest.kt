@@ -22,18 +22,56 @@ class SafDocumentBrowserPolicyTest {
     }
 
     @Test
-    fun sortsDirectoriesBeforeVideosByName() {
+    fun sortsDirectoriesBeforeVideosByNewestFirstByDefault() {
         val entries = listOf(
-            entry(name = "zeta.mp4", isDirectory = false, mimeType = "video/mp4"),
-            entry(name = "Beta", isDirectory = true, mimeType = null),
-            entry(name = "alpha.mkv", isDirectory = false, mimeType = "application/octet-stream"),
-            entry(name = "Alpha", isDirectory = true, mimeType = null),
+            entry(name = "old-video.mp4", isDirectory = false, mimeType = "video/mp4", modifiedMs = 100L),
+            entry(name = "new-folder", isDirectory = true, mimeType = null, modifiedMs = 400L),
+            entry(name = "new-video.mkv", isDirectory = false, mimeType = "application/octet-stream", modifiedMs = 300L),
+            entry(name = "old-folder", isDirectory = true, mimeType = null, modifiedMs = 200L),
             entry(name = "ignored.txt", isDirectory = false, mimeType = "text/plain")
         )
 
-        val sortedNames = sortSafDocumentEntries(entries).map { it.name }
+        val sortedNames = sortSafDocumentEntries(entries, SafDocumentSortOrder.NEWEST_FIRST).map { it.name }
 
-        assertEquals(listOf("Alpha", "Beta", "alpha.mkv", "zeta.mp4"), sortedNames)
+        assertEquals(listOf("new-folder", "old-folder", "new-video.mkv", "old-video.mp4"), sortedNames)
+    }
+
+    @Test
+    fun sortsDirectoriesBeforeVideosByOldestFirst() {
+        val entries = listOf(
+            entry(name = "old-video.mp4", isDirectory = false, mimeType = "video/mp4", modifiedMs = 100L),
+            entry(name = "new-folder", isDirectory = true, mimeType = null, modifiedMs = 400L),
+            entry(name = "new-video.mkv", isDirectory = false, mimeType = "application/octet-stream", modifiedMs = 300L),
+            entry(name = "old-folder", isDirectory = true, mimeType = null, modifiedMs = 200L)
+        )
+
+        val sortedNames = sortSafDocumentEntries(entries, SafDocumentSortOrder.OLDEST_FIRST).map { it.name }
+
+        assertEquals(listOf("old-folder", "new-folder", "old-video.mp4", "new-video.mkv"), sortedNames)
+    }
+
+    @Test
+    fun fallsBackToNameWhenModifiedTimesMatch() {
+        val entries = listOf(
+            entry(name = "zeta.mp4", isDirectory = false, mimeType = "video/mp4", modifiedMs = 100L),
+            entry(name = "alpha.mkv", isDirectory = false, mimeType = "application/octet-stream", modifiedMs = 100L)
+        )
+
+        val sortedNames = sortSafDocumentEntries(entries, SafDocumentSortOrder.NEWEST_FIRST).map { it.name }
+
+        assertEquals(listOf("alpha.mkv", "zeta.mp4"), sortedNames)
+    }
+
+    @Test
+    fun unknownModifiedTimeSortsAfterKnownTimeWhenNewestFirst() {
+        val entries = listOf(
+            entry(name = "unknown.mp4", isDirectory = false, mimeType = "video/mp4", modifiedMs = 0L),
+            entry(name = "known.mkv", isDirectory = false, mimeType = "application/octet-stream", modifiedMs = 100L)
+        )
+
+        val sortedNames = sortSafDocumentEntries(entries, SafDocumentSortOrder.NEWEST_FIRST).map { it.name }
+
+        assertEquals(listOf("known.mkv", "unknown.mp4"), sortedNames)
     }
 
     @Test
@@ -59,14 +97,15 @@ class SafDocumentBrowserPolicyTest {
     private fun entry(
         name: String,
         isDirectory: Boolean,
-        mimeType: String?
+        mimeType: String?,
+        modifiedMs: Long = 0L
     ): SafDocumentEntry {
         return SafDocumentEntry(
             documentId = name,
             uri = "content://provider/document/$name",
             name = name,
             mimeType = mimeType,
-            modifiedMs = 0L,
+            modifiedMs = modifiedMs,
             isDirectory = isDirectory
         )
     }

@@ -46,11 +46,7 @@
     <string name="requirements_modal_message">- XREAL One or XREAL One Pro glasses are required\n- Android 13 or newer is required\n- Samsung DeX desktop mode is not supported. Turn off DeX and use screen mirroring</string>
     <string name="requirements_modal_action">Got it</string>
     <string name="toast_glasses_required">Connect XREAL glasses, then select VR SBS content</string>
-    <string name="buy_me_coffee_support_text">Enjoying vr2xr?</string>
-    <string name="footer_buy_me_a_coffee">Buy Me a Coffee</string>
-    <string name="buy_me_coffee_url">https://buymeacoffee.com/skarian</string>
-    <string name="error_open_buy_me_coffee">Unable to open Buy Me a Coffee link</string>
-    <string name="footer_designed_with">Designed with ❤️ by Neil Skaria</string>
+    <string name="footer_designed_with">Designed with ❤️ by Neil Skaria\nOptimized by NeoNatural</string>
     <string name="tracking_setup_step1">Place your glasses on a flat surface and tap Run Calibration</string>
     <string name="tracking_setup_idle">Tap Run Calibration to begin</string>
     <string name="tracking_setup_connecting">Connecting to glasses</string>
@@ -59,6 +55,7 @@
     <string name="tracking_setup_calibration_complete_button">Calibration Complete</string>
     <string name="tracking_setup_checkmark">✓</string>
     <string name="tracking_ready_step">Put the glasses back on and set Display\u00A0&gt;\u00A03D\u00A0Mode to "Full SBS"</string>
+    <string name="tracking_ready_do_not_show_again">Do not show this again</string>
     <string name="tracking_ready_continue">Continue to VR Player</string>
     <string name="tracking_ready_zero_failed">zero view failed</string>
     <string name="tracking_setup_error">Tracking error: %1$s</string>
@@ -77,13 +74,12 @@
     <string name="saf_back">Back</string>
     <string name="saf_close">Close</string>
     <string name="saf_loading">Loading folder...</string>
+    <string name="saf_sort_newest_first">Sort: Newest first</string>
+    <string name="saf_sort_oldest_first">Sort: Oldest first</string>
     <string name="saf_entries_count">%1$d playable entries</string>
     <string name="saf_empty_folder">No folders or supported videos found here.</string>
     <string name="saf_folder_prefix">Folder: %1$s</string>
     <string name="saf_video_prefix">Video: %1$s</string>
-    <string name="saf_play_confirm_message">Play this video with vr2xr?</string>
-    <string name="saf_play_action">Play</string>
-    <string name="saf_cancel">Cancel</string>
     <string name="saf_error_invalid_tree">Invalid CIFS folder URI</string>
     <string name="saf_error_no_cursor">Folder provider did not return a file list</string>
     <string name="saf_error_query_failed">Unable to read CIFS folder: %1$s</string>

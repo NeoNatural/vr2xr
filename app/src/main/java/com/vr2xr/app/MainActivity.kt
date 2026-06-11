@@ -2,7 +2,6 @@ package com.vr2xr.app
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
@@ -45,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private var connectionProbeJob: Job? = null
     private var pendingResumeRequest = false
     private var currentConnectionStatus = ConnectionStatusUi.CHECKING
+    private var startupCalibrationLaunched = false
 
     private val openDocument = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri == null) {
@@ -78,9 +78,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.buyMeCoffeeButton.setOnClickListener {
-            openBuyMeCoffee()
-        }
         binding.openFileButton.setOnClickListener {
             openDocument.launch(arrayOf("video/*"))
         }
@@ -138,7 +135,11 @@ class MainActivity : AppCompatActivity() {
             val probe = trackingManager.probeConnection()
             renderConnectionStatus(probe)
             if (probe.connected) {
-                launchTrackingSetup(source)
+                if (shouldLaunchTrackingSetupForSource(trackingManager.sessionState.value)) {
+                    launchTrackingSetup(source)
+                } else {
+                    launchTrackingReady(source)
+                }
             } else {
                 setRuntimeStatus(getString(R.string.status_glasses_required))
                 Toast.makeText(this@MainActivity, R.string.toast_glasses_required, Toast.LENGTH_SHORT).show()
@@ -156,10 +157,19 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun launchTrackingSetup(source: SourceDescriptor) {
+    private fun launchTrackingSetup(source: SourceDescriptor?) {
         val intent = Intent(this, TrackingSetupActivity::class.java)
-            .putExtra(PlayerActivity.EXTRA_SOURCE, source)
+        if (source != null) {
+            intent.putExtra(PlayerActivity.EXTRA_SOURCE, source)
+        }
         startActivity(intent)
+    }
+
+    private fun launchTrackingReady(source: SourceDescriptor) {
+        startActivity(
+            Intent(this, TrackingReadyActivity::class.java)
+                .putExtra(PlayerActivity.EXTRA_SOURCE, source)
+        )
     }
 
     private fun launchSafDocumentBrowser(treeUri: Uri) {
@@ -188,9 +198,26 @@ class MainActivity : AppCompatActivity() {
             while (isActive) {
                 val probe = trackingManager.probeConnection()
                 renderConnectionStatus(probe)
+                maybeLaunchStartupCalibration(probe)
                 delay(2000L)
             }
         }
+    }
+
+    private fun maybeLaunchStartupCalibration(probe: OneXrConnectionProbe) {
+        if (
+            startupCalibrationLaunched ||
+            pendingResumeRequest ||
+            !probe.connected ||
+            isFinishing
+        ) {
+            return
+        }
+        if (!shouldLaunchTrackingSetupForSource(trackingManager.sessionState.value)) {
+            return
+        }
+        startupCalibrationLaunched = true
+        launchTrackingSetup(source = null)
     }
 
     private fun maybeResumeActivePlaybackSession(consumeOnMiss: Boolean) {
@@ -230,17 +257,6 @@ class MainActivity : AppCompatActivity() {
         }
         binding.statusText.text = message
         binding.statusText.visibility = View.VISIBLE
-    }
-
-    private fun openBuyMeCoffee() {
-        val linkIntent = Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.buy_me_coffee_url))).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
-        }
-        try {
-            startActivity(linkIntent)
-        } catch (_: ActivityNotFoundException) {
-            errors.show(getString(R.string.error_open_buy_me_coffee))
-        }
     }
 
     private fun showRequirementsModal() {

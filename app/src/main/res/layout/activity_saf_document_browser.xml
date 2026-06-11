@@ -58,6 +58,14 @@
             android:layout_marginTop="@dimen/launcher_section_spacing"
             android:text="@string/saf_loading" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/safSortButton"
+            style="@style/Widget.Vr2xr.Launcher.PrimaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/launcher_section_spacing"
+            android:text="@string/saf_sort_newest_first" />
+
         <LinearLayout
             android:id="@+id/safEntriesContainer"
             android:layout_width="match_parent"

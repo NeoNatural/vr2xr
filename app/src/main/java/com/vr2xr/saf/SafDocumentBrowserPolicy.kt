@@ -30,6 +30,11 @@ enum class SafTreePermissionState {
     MISSING
 }
 
+enum class SafDocumentSortOrder {
+    NEWEST_FIRST,
+    OLDEST_FIRST
+}
+
 fun isSafVideoDocument(name: String, mimeType: String?): Boolean {
     if (mimeType?.startsWith("video/") == true) {
         return true
@@ -39,13 +44,36 @@ fun isSafVideoDocument(name: String, mimeType: String?): Boolean {
     return extension in VIDEO_EXTENSIONS
 }
 
-fun sortSafDocumentEntries(entries: List<SafDocumentEntry>): List<SafDocumentEntry> {
+fun sortSafDocumentEntries(
+    entries: List<SafDocumentEntry>,
+    order: SafDocumentSortOrder
+): List<SafDocumentEntry> {
     return entries
         .filter { it.isDirectory || it.isVideo }
         .sortedWith(
             compareBy<SafDocumentEntry> { !it.isDirectory }
+                .thenComparator { left, right -> compareSafDocumentModifiedTime(left, right, order) }
                 .thenBy { it.name.lowercase(Locale.ROOT) }
         )
+}
+
+private fun compareSafDocumentModifiedTime(
+    left: SafDocumentEntry,
+    right: SafDocumentEntry,
+    order: SafDocumentSortOrder
+): Int {
+    val leftUnknown = left.modifiedMs <= 0L
+    val rightUnknown = right.modifiedMs <= 0L
+    if (leftUnknown != rightUnknown) {
+        return if (leftUnknown) 1 else -1
+    }
+    if (leftUnknown && rightUnknown) {
+        return 0
+    }
+    return when (order) {
+        SafDocumentSortOrder.NEWEST_FIRST -> right.modifiedMs.compareTo(left.modifiedMs)
+        SafDocumentSortOrder.OLDEST_FIRST -> left.modifiedMs.compareTo(right.modifiedMs)
+    }
 }
 
 fun resolveSafTreePermissionState(

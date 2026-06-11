@@ -25,6 +25,28 @@
             android:textColor="@color/player_controls_text_primary"
             android:text="@string/projection_half_equirectangular_vr180"
             app:buttonTint="@color/player_controls_timeline_active" />
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/projectionFisheyeEquidistantOption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="@dimen/player_timeline_time_spacing"
+            android:paddingBottom="@dimen/player_timeline_time_spacing"
+            android:text="@string/projection_fisheye_equidistant_vr180"
+            android:textAppearance="@style/TextAppearance.Vr2xr.Player.DialogItem"
+            android:textColor="@color/player_controls_text_primary"
+            app:buttonTint="@color/player_controls_timeline_active" />
+
+        <com.google.android.material.radiobutton.MaterialRadioButton
+            android:id="@+id/projectionFisheyeEquisolidOption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="@dimen/player_timeline_time_spacing"
+            android:paddingBottom="@dimen/player_timeline_time_spacing"
+            android:text="@string/projection_fisheye_equisolid_vr180"
+            android:textAppearance="@style/TextAppearance.Vr2xr.Player.DialogItem"
+            android:textColor="@color/player_controls_text_primary"
+            app:buttonTint="@color/player_controls_timeline_active" />
     </RadioGroup>
 
     <LinearLayout
@@ -52,7 +74,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/projection_fov_title" />
+                android:text="@string/projection_view_fov_title" />
 
             <TextView
                 android:id="@+id/projectionFovValueText"
@@ -67,7 +89,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/player_timeline_time_spacing"
-            android:contentDescription="@string/projection_fov_title"
+            android:contentDescription="@string/projection_view_fov_title"
             android:stepSize="1"
             android:value="95"
             android:valueFrom="60"
@@ -79,12 +101,58 @@
             app:trackColorInactive="@color/player_controls_timeline_inactive" />
     </LinearLayout>
 
-    <TextView
-        style="@style/TextAppearance.Vr2xr.Player.TimeLabel"
+    <LinearLayout
+        android:id="@+id/projectionLensFovRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/player_dialog_row_spacing"
-        android:text="@string/projection_settings_more_coming_soon" />
+        android:background="@drawable/bg_player_touchpad"
+        android:gravity="center_vertical"
+        android:minHeight="@dimen/player_dialog_row_min_height"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/player_dialog_row_horizontal_padding"
+        android:paddingTop="@dimen/player_dialog_row_horizontal_padding"
+        android:paddingEnd="@dimen/player_dialog_row_horizontal_padding"
+        android:paddingBottom="@dimen/player_dialog_row_horizontal_padding"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                style="@style/TextAppearance.Vr2xr.Player.DialogItem"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/projection_lens_fov_title" />
+
+            <TextView
+                android:id="@+id/projectionLensFovValueText"
+                style="@style/TextAppearance.Vr2xr.Player.DialogItem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/projection_lens_fov_default_value" />
+        </LinearLayout>
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/projectionLensFovSlider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/player_timeline_time_spacing"
+            android:contentDescription="@string/projection_lens_fov_title"
+            android:stepSize="1"
+            android:value="180"
+            android:valueFrom="160"
+            android:valueTo="220"
+            app:haloColor="@color/player_controls_timeline_halo"
+            app:labelBehavior="gone"
+            app:thumbColor="@color/player_controls_timeline_active"
+            app:trackColorActive="@color/player_controls_timeline_active"
+            app:trackColorInactive="@color/player_controls_timeline_inactive" />
+    </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/projectionResetFovButton"

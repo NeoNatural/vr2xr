@@ -31,6 +31,7 @@ class VrSbsRenderer(
     private var eyeYawOffsetHandle: Int = -1
     private var tanHalfFovXHandle: Int = -1
     private var tanHalfFovYHandle: Int = -1
+    private var fisheyeHalfFovHandle: Int = -1
 
     private var outputWidth: Int = 1
     private var outputHeight: Int = 1
@@ -91,6 +92,7 @@ class VrSbsRenderer(
         eyeYawOffsetHandle = GLES20.glGetUniformLocation(program, "uEyeYawOffsetRad")
         tanHalfFovXHandle = GLES20.glGetUniformLocation(program, "uTanHalfFovX")
         tanHalfFovYHandle = GLES20.glGetUniformLocation(program, "uTanHalfFovY")
+        fisheyeHalfFovHandle = GLES20.glGetUniformLocation(program, "uFisheyeHalfFovRad")
 
         externalTextureId = GlUtil.createExternalTexture()
         surfaceTexture = SurfaceTexture(externalTextureId).apply {
@@ -140,6 +142,12 @@ class VrSbsRenderer(
         val safeHeight = outputHeight.coerceAtLeast(1)
         val halfConvergenceRadians = Math.toRadians(mode.convergenceDegrees.toDouble()).toFloat() * 0.5f
         val tanHalfFovY = tan(Math.toRadians((mode.perEyeFovDegrees * 0.5f).toDouble())).toFloat()
+        val fisheyeSourceFovDegrees = if (mode.fisheyeSourceFovDegrees.isFinite()) {
+            mode.fisheyeSourceFovDegrees.coerceIn(1f, 360f)
+        } else {
+            DEFAULT_FISHEYE_SOURCE_FOV_DEGREES
+        }
+        val fisheyeHalfFovRadians = Math.toRadians((fisheyeSourceFovDegrees * 0.5f).toDouble()).toFloat()
 
         // Left eye from left half of source texture.
         GLES20.glViewport(0, 0, halfWidth, outputHeight)
@@ -148,6 +156,7 @@ class VrSbsRenderer(
         GLES20.glUniform1f(eyeYawOffsetHandle, halfConvergenceRadians)
         GLES20.glUniform1f(tanHalfFovYHandle, tanHalfFovY)
         GLES20.glUniform1f(tanHalfFovXHandle, tanHalfFovY * (leftEyeWidth.toFloat() / safeHeight.toFloat()))
+        GLES20.glUniform1f(fisheyeHalfFovHandle, fisheyeHalfFovRadians)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
         // Right eye from right half of source texture.
@@ -157,6 +166,7 @@ class VrSbsRenderer(
         GLES20.glUniform1f(eyeYawOffsetHandle, -halfConvergenceRadians)
         GLES20.glUniform1f(tanHalfFovYHandle, tanHalfFovY)
         GLES20.glUniform1f(tanHalfFovXHandle, tanHalfFovY * (rightEyeWidth.toFloat() / safeHeight.toFloat()))
+        GLES20.glUniform1f(fisheyeHalfFovHandle, fisheyeHalfFovRadians)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
         GLES20.glDisableVertexAttribArray(positionHandle)
@@ -194,14 +204,19 @@ data class RenderMode(
     val projectionMode: ProjectionMode = ProjectionMode.VR180,
     val swapEyes: Boolean = false,
     val convergenceDegrees: Float = 0f,
-    val perEyeFovDegrees: Float = 95f
+    val perEyeFovDegrees: Float = 95f,
+    val fisheyeSourceFovDegrees: Float = DEFAULT_FISHEYE_SOURCE_FOV_DEGREES
 )
+
+private const val DEFAULT_FISHEYE_SOURCE_FOV_DEGREES = 180f
 
 private fun ProjectionMode.toShaderValue(): Int {
     return when (this) {
         ProjectionMode.VR180 -> 0
         ProjectionMode.VR360 -> 1
         ProjectionMode.FLAT -> 2
+        ProjectionMode.VR180_FISHEYE_EQUIDISTANT -> 3
+        ProjectionMode.VR180_FISHEYE_EQUISOLID -> 4
     }
 }
 
@@ -228,6 +243,7 @@ uniform float uHeadPitchRad;
 uniform float uEyeYawOffsetRad;
 uniform float uTanHalfFovX;
 uniform float uTanHalfFovY;
+uniform float uFisheyeHalfFovRad;
 uniform samplerExternalOES uTexture;
 
 const float PI = 3.1415926535897932384626433832795;
@@ -281,6 +297,34 @@ vec2 mapVr360(vec3 ray) {
     return vec2(wrappedYaw, 0.5 - (pitch / PI));
 }
 
+vec2 mapVr180FisheyeEquidistant(vec3 ray) {
+    float theta = acos(clamp(ray.z, -1.0, 1.0));
+    if (theta > uFisheyeHalfFovRad) {
+        return vec2(-1.0, -1.0);
+    }
+    float xyLength = length(ray.xy);
+    if (xyLength < 0.00001) {
+        return vec2(0.5, 0.5);
+    }
+    float radius = (theta / max(uFisheyeHalfFovRad, 0.00001)) * 0.5;
+    vec2 direction = vec2(ray.x, -ray.y) / xyLength;
+    return vec2(0.5, 0.5) + (direction * radius);
+}
+
+vec2 mapVr180FisheyeEquisolid(vec3 ray) {
+    float theta = acos(clamp(ray.z, -1.0, 1.0));
+    if (theta > uFisheyeHalfFovRad) {
+        return vec2(-1.0, -1.0);
+    }
+    float xyLength = length(ray.xy);
+    if (xyLength < 0.00001) {
+        return vec2(0.5, 0.5);
+    }
+    float radius = (sin(theta * 0.5) / max(sin(uFisheyeHalfFovRad * 0.5), 0.00001)) * 0.5;
+    vec2 direction = vec2(ray.x, -ray.y) / xyLength;
+    return vec2(0.5, 0.5) + (direction * radius);
+}
+
 void main() {
     vec2 eyeUv = vRawCoord;
     vec3 ray = makeViewRay(vRawCoord);
@@ -288,6 +332,10 @@ void main() {
         eyeUv = mapVr180(ray);
     } else if (uProjectionMode == 1) {
         eyeUv = mapVr360(ray);
+    } else if (uProjectionMode == 3) {
+        eyeUv = mapVr180FisheyeEquidistant(ray);
+    } else if (uProjectionMode == 4) {
+        eyeUv = mapVr180FisheyeEquisolid(ray);
     }
 
     if (eyeUv.x < 0.0 || eyeUv.y < 0.0 || eyeUv.x > 1.0 || eyeUv.y > 1.0) {

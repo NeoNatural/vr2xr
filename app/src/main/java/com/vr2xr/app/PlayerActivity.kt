@@ -44,6 +44,7 @@ import com.vr2xr.display.asDebugLabel
 import com.vr2xr.player.CodecCapabilityProbe
 import com.vr2xr.player.PlaybackSessionOwner
 import com.vr2xr.player.VrPlaybackService
+import com.vr2xr.render.ProjectionMode
 import com.vr2xr.render.RenderMode
 import com.vr2xr.render.VrSbsRenderer
 import com.vr2xr.source.SourceDescriptor
@@ -102,7 +103,6 @@ class PlayerActivity : AppCompatActivity() {
     private var isTimelineScrubbing = false
     private var isTouchpadScaling = false
     private var pendingTimelinePositionMs = 0L
-    private var selectedProjectionIndex = 0
     private var projectionFovSliderOnChangeCount = 0
     private var lastTouchpadX = 0f
     private var lastTouchpadY = 0f
@@ -167,7 +167,11 @@ class PlayerActivity : AppCompatActivity() {
             finish()
             return
         }
-        renderMode = renderMode.copy(perEyeFovDegrees = loadPersistedProjectionFov())
+        renderMode = renderMode.copy(
+            projectionMode = loadPersistedProjectionMode(),
+            perEyeFovDegrees = loadPersistedProjectionFov(),
+            fisheyeSourceFovDegrees = loadPersistedFisheyeSourceFov()
+        )
 
         decoderSummary = CodecCapabilityProbe().findHevcDecoderSummary()
 
@@ -682,15 +686,19 @@ class PlayerActivity : AppCompatActivity() {
     private fun showProjectionSettingsPopup() {
         Log.i(TAG, "Opening projection settings dialog")
         val dialogBinding = DialogProjectionSettingsBinding.inflate(layoutInflater)
-        dialogBinding.projectionHalfEquirectangularOption.isChecked = selectedProjectionIndex == 0
+        dialogBinding.projectionOptionsGroup.check(checkedIdForProjectionMode(renderMode.projectionMode))
+        updateFisheyeSourceFovVisibility(dialogBinding)
         dialogBinding.projectionOptionsGroup.setOnCheckedChangeListener { _, checkedId ->
-            if (checkedId == R.id.projectionHalfEquirectangularOption) {
-                selectedProjectionIndex = 0
-            }
+            applyProjectionMode(projectionModeForCheckedId(checkedId))
+            updateFisheyeSourceFovVisibility(dialogBinding)
         }
         bindProjectionFovSlider(
             slider = dialogBinding.projectionFovSlider,
             valueLabel = dialogBinding.projectionFovValueText
+        )
+        bindFisheyeSourceFovSlider(
+            slider = dialogBinding.projectionLensFovSlider,
+            valueLabel = dialogBinding.projectionLensFovValueText
         )
         dialogBinding.projectionResetFovButton.setOnClickListener {
             applyProjectionFov(ProjectionFovConfig.DEFAULT_DEGREES)
@@ -729,6 +737,32 @@ class PlayerActivity : AppCompatActivity() {
         return getString(R.string.projection_fov_value_format, value)
     }
 
+    private fun projectionModeForCheckedId(checkedId: Int): ProjectionMode {
+        return when (checkedId) {
+            R.id.projectionFisheyeEquidistantOption -> ProjectionMode.VR180_FISHEYE_EQUIDISTANT
+            R.id.projectionFisheyeEquisolidOption -> ProjectionMode.VR180_FISHEYE_EQUISOLID
+            else -> ProjectionMode.VR180
+        }
+    }
+
+    private fun checkedIdForProjectionMode(mode: ProjectionMode): Int {
+        return when (mode) {
+            ProjectionMode.VR180_FISHEYE_EQUIDISTANT -> R.id.projectionFisheyeEquidistantOption
+            ProjectionMode.VR180_FISHEYE_EQUISOLID -> R.id.projectionFisheyeEquisolidOption
+            else -> R.id.projectionHalfEquirectangularOption
+        }
+    }
+
+    private fun isFisheyeProjectionMode(mode: ProjectionMode): Boolean {
+        return mode == ProjectionMode.VR180_FISHEYE_EQUIDISTANT ||
+            mode == ProjectionMode.VR180_FISHEYE_EQUISOLID
+    }
+
+    private fun updateFisheyeSourceFovVisibility(dialogBinding: DialogProjectionSettingsBinding) {
+        dialogBinding.projectionLensFovRow.visibility =
+            if (isFisheyeProjectionMode(renderMode.projectionMode)) View.VISIBLE else View.GONE
+    }
+
     private fun bindProjectionFovSlider(slider: Slider, valueLabel: TextView) {
         val currentFov = ProjectionFovConfig.normalizeDegrees(renderMode.perEyeFovDegrees)
         projectionFovSliderOnChangeCount = 0
@@ -755,6 +789,27 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private fun bindFisheyeSourceFovSlider(slider: Slider, valueLabel: TextView) {
+        val currentFov = ProjectionFovConfig.normalizeFisheyeSourceFovDegrees(
+            renderMode.fisheyeSourceFovDegrees
+        )
+        slider.clearOnChangeListeners()
+        slider.clearOnSliderTouchListeners()
+        slider.valueFrom = ProjectionFovConfig.MIN_FISHEYE_SOURCE_FOV_DEGREES
+        slider.valueTo = ProjectionFovConfig.MAX_FISHEYE_SOURCE_FOV_DEGREES
+        slider.stepSize = 0f
+        slider.value = currentFov
+        valueLabel.text = formatProjectionFovValue(currentFov)
+        slider.addOnChangeListener { _, value, fromUser ->
+            val normalized = ProjectionFovConfig.normalizeFisheyeSourceFovDegrees(value)
+            valueLabel.text = formatProjectionFovValue(normalized)
+            if (!fromUser) {
+                return@addOnChangeListener
+            }
+            applyFisheyeSourceFov(normalized)
+        }
+    }
+
     private fun adjustProjectionFovByStep(delta: Float) {
         val updatedValue = ProjectionFovConfig.normalizeDegrees(renderMode.perEyeFovDegrees + delta)
         applyProjectionFov(updatedValue)
@@ -775,6 +830,50 @@ class PlayerActivity : AppCompatActivity() {
         return normalizedValue
     }
 
+    private fun loadPersistedProjectionMode(): ProjectionMode {
+        val storedValue = projectionSettingsPreferences.getString(
+            ProjectionFovConfig.PREFERENCE_KEY_PROJECTION_MODE,
+            null
+        )
+        val normalizedValue = ProjectionFovConfig.projectionModeFromPreference(storedValue)
+        val normalizedPreference = ProjectionFovConfig.projectionModeToPreference(normalizedValue)
+        if (storedValue != normalizedPreference) {
+            projectionSettingsPreferences.edit()
+                .putString(ProjectionFovConfig.PREFERENCE_KEY_PROJECTION_MODE, normalizedPreference)
+                .apply()
+        }
+        return normalizedValue
+    }
+
+    private fun loadPersistedFisheyeSourceFov(): Float {
+        val storedValue = projectionSettingsPreferences.getFloat(
+            ProjectionFovConfig.PREFERENCE_KEY_FISHEYE_SOURCE_FOV_DEGREES,
+            ProjectionFovConfig.DEFAULT_FISHEYE_SOURCE_FOV_DEGREES
+        )
+        val normalizedValue = ProjectionFovConfig.normalizeFisheyeSourceFovDegrees(storedValue)
+        if (storedValue != normalizedValue) {
+            projectionSettingsPreferences.edit()
+                .putFloat(ProjectionFovConfig.PREFERENCE_KEY_FISHEYE_SOURCE_FOV_DEGREES, normalizedValue)
+                .apply()
+        }
+        return normalizedValue
+    }
+
+    private fun applyProjectionMode(value: ProjectionMode) {
+        if (renderMode.projectionMode == value) {
+            return
+        }
+        renderMode = renderMode.copy(projectionMode = value)
+        applyRenderModeToRenderers()
+        projectionSettingsPreferences.edit()
+            .putString(
+                ProjectionFovConfig.PREFERENCE_KEY_PROJECTION_MODE,
+                ProjectionFovConfig.projectionModeToPreference(value)
+            )
+            .apply()
+        Log.i(TAG, "Projection mode changed to $value")
+    }
+
     private fun applyProjectionFov(value: Float) {
         val normalizedValue = ProjectionFovConfig.normalizeDegrees(value)
         if (renderMode.perEyeFovDegrees == normalizedValue) {
@@ -785,6 +884,19 @@ class PlayerActivity : AppCompatActivity() {
         projectionSettingsPreferences.edit()
             .putFloat(ProjectionFovConfig.PREFERENCE_KEY_FOV_DEGREES, normalizedValue)
             .apply()
+    }
+
+    private fun applyFisheyeSourceFov(value: Float) {
+        val normalizedValue = ProjectionFovConfig.normalizeFisheyeSourceFovDegrees(value)
+        if (renderMode.fisheyeSourceFovDegrees == normalizedValue) {
+            return
+        }
+        renderMode = renderMode.copy(fisheyeSourceFovDegrees = normalizedValue)
+        applyRenderModeToRenderers()
+        projectionSettingsPreferences.edit()
+            .putFloat(ProjectionFovConfig.PREFERENCE_KEY_FISHEYE_SOURCE_FOV_DEGREES, normalizedValue)
+            .apply()
+        Log.i(TAG, "Fisheye source FOV changed to $normalizedValue")
     }
 
     private fun formatPlaybackTime(positionMs: Long): String {

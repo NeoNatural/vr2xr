@@ -109,8 +109,8 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/requirementsHelpButton"
             style="@style/Widget.Vr2xr.Launcher.HelpButton"
-            android:layout_width="@dimen/launcher_help_button_size"
-            android:layout_height="@dimen/launcher_help_button_size"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="@dimen/launcher_section_spacing"
             android:contentDescription="@string/requirements_help_content_description"

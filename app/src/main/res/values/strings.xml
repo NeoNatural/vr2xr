@@ -4,7 +4,7 @@
     <string name="open_file">Open file</string>
     <string name="open_cifs_folder">Open CIFS folder</string>
     <string name="open_url">Open URL</string>
-    <string name="requirements_help">?</string>
+    <string name="requirements_help">App Requirements</string>
     <string name="requirements_help_content_description">Show requirements</string>
     <string name="recenter">Recenter</string>
     <string name="recenter_content_description">Recenter view</string>

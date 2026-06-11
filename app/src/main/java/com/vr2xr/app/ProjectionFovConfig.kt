@@ -18,4 +18,11 @@ object ProjectionFovConfig {
         }
         return clampDegrees(value)
     }
+
+    fun fovAfterPinchScale(currentDegrees: Float, scaleFactor: Float): Float {
+        if (!scaleFactor.isFinite() || scaleFactor <= 0f) {
+            return normalizeDegrees(currentDegrees)
+        }
+        return normalizeDegrees(currentDegrees / scaleFactor)
+    }
 }

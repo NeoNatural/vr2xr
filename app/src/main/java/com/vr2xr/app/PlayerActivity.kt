@@ -9,6 +9,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.Surface
 import android.view.View
 import android.widget.TextView
@@ -46,7 +47,6 @@ import com.vr2xr.player.VrPlaybackService
 import com.vr2xr.render.RenderMode
 import com.vr2xr.render.VrSbsRenderer
 import com.vr2xr.source.SourceDescriptor
-import com.vr2xr.tracking.computeTouchpadAutoDragDelta
 import com.vr2xr.tracking.OneXrTrackingSessionManager
 import com.vr2xr.tracking.PoseState
 import com.vr2xr.tracking.RuntimePoseController
@@ -99,15 +99,13 @@ class PlayerActivity : AppCompatActivity() {
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
     private var playbackProgressJob: Job? = null
-    private var touchpadAutoDragJob: Job? = null
     private var isTimelineScrubbing = false
+    private var isTouchpadScaling = false
     private var pendingTimelinePositionMs = 0L
     private var selectedProjectionIndex = 0
     private var projectionFovSliderOnChangeCount = 0
     private var lastTouchpadX = 0f
     private var lastTouchpadY = 0f
-    private var touchpadNormalizedX = 0f
-    private var touchpadNormalizedY = 0f
     private var launchRequest = PlayerLaunchRequest(
         source = null,
         resumeExisting = false
@@ -235,7 +233,6 @@ class PlayerActivity : AppCompatActivity() {
     override fun onStop() {
         routeBinding.onTeardownBegin()
         displayController.stop()
-        stopTouchpadAutoDrag()
         stopPlaybackProgressUpdates()
         externalReconnectWatchdogJob?.cancel()
         externalReconnectWatchdogJob = null
@@ -263,7 +260,6 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         routeBinding.onTeardownBegin()
-        stopTouchpadAutoDrag()
         clearActiveSurface(force = true)
         dismissExternalPresentation()
         releaseMediaController()
@@ -412,24 +408,53 @@ class PlayerActivity : AppCompatActivity() {
         })
     }
 
+    private val touchpadScaleGestureDetector by lazy {
+        ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                applyProjectionFov(
+                    ProjectionFovConfig.fovAfterPinchScale(
+                        currentDegrees = renderMode.perEyeFovDegrees,
+                        scaleFactor = detector.scaleFactor
+                    )
+                )
+                return true
+            }
+        })
+    }
+
     private fun setupTouchpad() {
         binding.touchpadArea.post {
-            touchpadNormalizedX = 0f
-            touchpadNormalizedY = 0f
             resetTouchpadIndicator(animate = false)
         }
         binding.touchpadArea.setOnTouchListener { _, event ->
-            touchpadGestureDetector.onTouchEvent(event)
+            if (event.pointerCount >= 2 || isTouchpadScaling) {
+                touchpadScaleGestureDetector.onTouchEvent(event)
+            } else {
+                touchpadGestureDetector.onTouchEvent(event)
+            }
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    isTouchpadScaling = false
                     lastTouchpadX = event.x
                     lastTouchpadY = event.y
                     moveTouchpadIndicator(event.x, event.y)
-                    startTouchpadAutoDrag()
+                    true
+                }
+
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (!isTouchpadScaling) {
+                        applyRuntimePose(runtimePoseController.commitTouchpadBias())
+                    }
+                    isTouchpadScaling = true
+                    resetTouchpadIndicator(animate = true)
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    if (isTouchpadScaling || event.pointerCount >= 2) {
+                        isTouchpadScaling = true
+                        return@setOnTouchListener true
+                    }
                     applyTouchpadDragDelta(
                         deltaX = event.x - lastTouchpadX,
                         deltaY = event.y - lastTouchpadY
@@ -440,12 +465,17 @@ class PlayerActivity : AppCompatActivity() {
                     true
                 }
 
+                MotionEvent.ACTION_POINTER_UP -> {
+                    isTouchpadScaling = true
+                    true
+                }
+
                 MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_CANCEL -> {
-                    stopTouchpadAutoDrag()
-                    applyRuntimePose(runtimePoseController.commitTouchpadBias())
-                    touchpadNormalizedX = 0f
-                    touchpadNormalizedY = 0f
+                    if (!isTouchpadScaling) {
+                        applyRuntimePose(runtimePoseController.commitTouchpadBias())
+                    }
+                    isTouchpadScaling = false
                     resetTouchpadIndicator(animate = true)
                     true
                 }
@@ -466,8 +496,6 @@ class PlayerActivity : AppCompatActivity() {
         indicator.translationX = centeredX
         indicator.translationY = centeredY
         indicator.alpha = 1f
-        touchpadNormalizedX = if (maxOffsetX > 0f) centeredX / maxOffsetX else 0f
-        touchpadNormalizedY = if (maxOffsetY > 0f) centeredY / maxOffsetY else 0f
     }
 
     private fun applyTouchpadDragDelta(deltaX: Float, deltaY: Float) {
@@ -481,42 +509,6 @@ class PlayerActivity : AppCompatActivity() {
         val yawDelta = (deltaX / maxOffsetX) * TOUCHPAD_DRAG_FULL_TRAVEL_RADIANS
         val pitchDelta = (deltaY / maxOffsetY) * TOUCHPAD_DRAG_FULL_TRAVEL_RADIANS
         applyRuntimePose(runtimePoseController.applyTouchpadBiasDelta(yawDelta, pitchDelta))
-    }
-
-    private fun startTouchpadAutoDrag() {
-        if (touchpadAutoDragJob?.isActive == true) {
-            return
-        }
-        touchpadAutoDragJob = lifecycleScope.launch {
-            while (isActive) {
-                applyTouchpadAutoDragStep()
-                delay(TOUCHPAD_AUTO_DRAG_INTERVAL_MS)
-            }
-        }
-    }
-
-    private fun stopTouchpadAutoDrag() {
-        touchpadAutoDragJob?.cancel()
-        touchpadAutoDragJob = null
-    }
-
-    private fun applyTouchpadAutoDragStep() {
-        val delta = computeTouchpadAutoDragDelta(
-            normalizedX = touchpadNormalizedX,
-            normalizedY = touchpadNormalizedY,
-            intervalMs = TOUCHPAD_AUTO_DRAG_INTERVAL_MS,
-            edgeThreshold = TOUCHPAD_AUTO_DRAG_EDGE_THRESHOLD,
-            radiansPerSecond = TOUCHPAD_AUTO_DRAG_RADIANS_PER_SECOND
-        )
-        if (delta.yawDeltaRad == 0f && delta.pitchDeltaRad == 0f) {
-            return
-        }
-        applyRuntimePose(
-            runtimePoseController.applyTouchpadBiasDelta(
-                yawDeltaRad = delta.yawDeltaRad,
-                pitchDeltaRad = delta.pitchDeltaRad
-            )
-        )
     }
 
     private fun resetTouchpadIndicator(animate: Boolean) {
@@ -1271,6 +1263,3 @@ private const val PAUSED_FRAME_VISIBILITY_TIMEOUT_MS = 2000L
 private const val SEEK_INTERVAL_MS = 15_000L
 private const val PLAYBACK_PROGRESS_UPDATE_MS = 300L
 private const val DEFAULT_IMU_SENSITIVITY = 0.9f
-private const val TOUCHPAD_AUTO_DRAG_INTERVAL_MS = 16L
-private const val TOUCHPAD_AUTO_DRAG_EDGE_THRESHOLD = 0.9f
-private const val TOUCHPAD_AUTO_DRAG_RADIANS_PER_SECOND = 0.24f

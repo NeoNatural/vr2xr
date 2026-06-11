@@ -35,6 +35,30 @@ class ProjectionFovConfigTest {
         assertEquals(ProjectionFovConfig.MAX_DEGREES, ProjectionFovConfig.normalizeDegrees(1000f), EPSILON)
         assertEquals(99f, ProjectionFovConfig.normalizeDegrees(99f), EPSILON)
     }
+
+    @Test
+    fun pinchScaleGreaterThanOneLowersFovForZoomIn() {
+        assertEquals(80f, ProjectionFovConfig.fovAfterPinchScale(100f, 1.25f), EPSILON)
+    }
+
+    @Test
+    fun pinchScaleLessThanOneRaisesFovForZoomOut() {
+        assertEquals(125f, ProjectionFovConfig.fovAfterPinchScale(100f, 0.8f), EPSILON)
+    }
+
+    @Test
+    fun pinchScaleReturnsNormalizedCurrentFovForInvalidScaleFactors() {
+        assertEquals(100f, ProjectionFovConfig.fovAfterPinchScale(100f, 0f), EPSILON)
+        assertEquals(100f, ProjectionFovConfig.fovAfterPinchScale(100f, -1f), EPSILON)
+        assertEquals(100f, ProjectionFovConfig.fovAfterPinchScale(100f, Float.NaN), EPSILON)
+        assertEquals(100f, ProjectionFovConfig.fovAfterPinchScale(100f, Float.POSITIVE_INFINITY), EPSILON)
+    }
+
+    @Test
+    fun pinchScaleClampsToConfiguredRange() {
+        assertEquals(ProjectionFovConfig.MIN_DEGREES, ProjectionFovConfig.fovAfterPinchScale(100f, 10f), EPSILON)
+        assertEquals(ProjectionFovConfig.MAX_DEGREES, ProjectionFovConfig.fovAfterPinchScale(100f, 0.1f), EPSILON)
+    }
 }
 
 private const val EPSILON = 1e-6f

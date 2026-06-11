@@ -737,7 +737,7 @@ class PlayerActivity : AppCompatActivity() {
         slider.clearOnSliderTouchListeners()
         slider.valueFrom = ProjectionFovConfig.MIN_DEGREES
         slider.valueTo = ProjectionFovConfig.MAX_DEGREES
-        slider.stepSize = ProjectionFovConfig.STEP_DEGREES
+        slider.stepSize = 0f
         slider.value = currentFov
         valueLabel.text = formatProjectionFovValue(currentFov)
         slider.addOnChangeListener { _, value, fromUser ->

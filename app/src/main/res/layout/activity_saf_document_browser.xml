@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/launcher_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/launcher_screen_padding">
+
+        <TextView
+            android:id="@+id/safTitleText"
+            style="@style/TextAppearance.Vr2xr.Launcher.Status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/saf_browser_title" />
+
+        <TextView
+            android:id="@+id/safCurrentFolderText"
+            style="@style/TextAppearance.Vr2xr.Launcher.RuntimeStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/launcher_section_spacing"
+            android:text="@string/saf_current_folder_default" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/launcher_section_spacing"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/safBackButton"
+                style="@style/Widget.Vr2xr.Launcher.PrimaryButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/saf_back" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/safCloseButton"
+                style="@style/Widget.Vr2xr.Launcher.PrimaryButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/launcher_section_spacing"
+                android:layout_weight="1"
+                android:text="@string/saf_close" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/safStatusText"
+            style="@style/TextAppearance.Vr2xr.Launcher.RuntimeStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/launcher_section_spacing"
+            android:text="@string/saf_loading" />
+
+        <LinearLayout
+            android:id="@+id/safEntriesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/launcher_section_spacing"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

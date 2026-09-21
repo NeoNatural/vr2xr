@@ -16,6 +16,7 @@
     <dimen name="launcher_footer_top_margin">20dp</dimen>
     <dimen name="launcher_footer_bottom_margin">16dp</dimen>
     <dimen name="launcher_icon_nudge_distance">12dp</dimen>
+    <dimen name="smb_thumbnail_size">192dp</dimen>
     <dimen name="setup_glasses_icon_size">168dp</dimen>
     <dimen name="setup_glasses_icon_top_margin">40dp</dimen>
     <dimen name="setup_status_top_margin">22dp</dimen>

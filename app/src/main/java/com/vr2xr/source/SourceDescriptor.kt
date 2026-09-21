@@ -9,12 +9,14 @@ data class SourceDescriptor(
     val original: String,
     val normalized: String,
     val type: SourceType,
-    val displayName: String? = null
+    val displayName: String? = null,
+    val profileId: String? = null
 ) : Parcelable {
     fun toUri(): Uri = Uri.parse(normalized)
 }
 
 enum class SourceType {
     LOCAL_URI,
-    HTTP_URL
+    HTTP_URL,
+    SMB_URI
 }

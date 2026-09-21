@@ -49,7 +49,7 @@ class VrPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         playbackCoordinator = (application as Vr2xrApplication).playbackCoordinator
-        engine = VrPlayerEngine(this)
+        engine = VrPlayerEngine(this, (application as Vr2xrApplication).smbClientManager)
         playbackCoordinator.attachEngine(engine)
         mediaSession = MediaSession.Builder(this, engine.player)
             .setCallback(mediaSessionCallback)

@@ -49,7 +49,7 @@
             android:screenOrientation="sensorPortrait" />
 
         <activity
-            android:name=".app.SafDocumentBrowserActivity"
+            android:name=".app.SmbBrowserActivity"
             android:exported="false"
             android:screenOrientation="sensorPortrait" />
 

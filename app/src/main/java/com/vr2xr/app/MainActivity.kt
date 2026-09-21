@@ -55,24 +55,6 @@ class MainActivity : AppCompatActivity() {
             .onFailure { errors.show(it.message ?: getString(R.string.error_open_selected_file)) }
     }
 
-    private val openCifsTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
-        if (uri == null) {
-            return@registerForActivityResult
-        }
-        val persistResult = runCatching {
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
-        if (persistResult.isFailure) {
-            errors.show(getString(R.string.saf_error_permission_persist_failed))
-            return@registerForActivityResult
-        }
-        saveLastCifsTreeUri(uri)
-        launchSafDocumentBrowser(uri)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -81,8 +63,8 @@ class MainActivity : AppCompatActivity() {
         binding.openFileButton.setOnClickListener {
             openDocument.launch(arrayOf("video/*"))
         }
-        binding.openCifsFolderButton.setOnClickListener {
-            openCifsTree.launch(readLastCifsTreeUri())
+        binding.openSmbShareButton.setOnClickListener {
+            startActivity(Intent(this, SmbBrowserActivity::class.java))
         }
 
         binding.openUrlButton.setOnClickListener {
@@ -170,26 +152,6 @@ class MainActivity : AppCompatActivity() {
             Intent(this, TrackingReadyActivity::class.java)
                 .putExtra(PlayerActivity.EXTRA_SOURCE, source)
         )
-    }
-
-    private fun launchSafDocumentBrowser(treeUri: Uri) {
-        startActivity(
-            Intent(this, SafDocumentBrowserActivity::class.java)
-                .putExtra(SafDocumentBrowserActivity.EXTRA_TREE_URI, treeUri.toString())
-        )
-    }
-
-    private fun readLastCifsTreeUri(): Uri? {
-        val raw = getSharedPreferences(CIFS_TREE_PREFS_NAME, MODE_PRIVATE)
-            .getString(KEY_LAST_CIFS_TREE_URI, null)
-        return raw?.let(Uri::parse)
-    }
-
-    private fun saveLastCifsTreeUri(treeUri: Uri) {
-        getSharedPreferences(CIFS_TREE_PREFS_NAME, MODE_PRIVATE)
-            .edit()
-            .putString(KEY_LAST_CIFS_TREE_URI, treeUri.toString())
-            .apply()
     }
 
     private fun startConnectionProbeLoop() {
@@ -323,8 +285,4 @@ class MainActivity : AppCompatActivity() {
         renderConnectionStatusUi(nextStatus)
     }
 
-    companion object {
-        private const val CIFS_TREE_PREFS_NAME = "cifs_tree"
-        private const val KEY_LAST_CIFS_TREE_URI = "last_tree_uri"
-    }
 }

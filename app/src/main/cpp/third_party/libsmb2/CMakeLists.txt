@@ -1,0 +1,311 @@
+if(NOT ESP_PLATFORM)
+  
+  if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR CMAKE_SYSTEM_NAME MATCHES dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
+    cmake_minimum_required(VERSION 3.13)
+  elseif(VITA)
+    cmake_minimum_required(VERSION 3.2)  
+  elseif(PICO_BOARD)
+    cmake_minimum_required(VERSION 3.12)
+    message(STATUS "Configuring libsmb2 for ${PICO_BOARD}")
+  else()
+    cmake_minimum_required(VERSION 3.5)
+  endif()
+
+  if(NOT IOP AND BUILD_IRX)
+    project(smb2man
+            LANGUAGES C
+            VERSION 2.3.0
+    )
+    set(VERSION 2.3.0)    
+    set(PACKAGE "smb2man")
+    set(PACKAGE_BUGREPORT "ronniesahlberg@gmail.com or andregui17@outlook.com")
+    set(PACKAGE_NAME "smb2man")
+    set(PACKAGE_VERSION "${VERSION}")
+    set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
+    set(PACKAGE_TARNAME "${PACKAGE}")
+    set(PACKAGE_URL "https://github.com/sahlberg/libsmb2")
+  elseif(PICO_BOARD)
+    project(libsmb2 C CXX ASM)
+  else()
+    project(libsmb2
+            LANGUAGES C
+            VERSION 7.0.0
+    )  
+    set(VERSION 7.0.0)
+    set(PACKAGE "libsmb2")
+    set(PACKAGE_BUGREPORT "ronniesahlberg@gmail.com")
+    set(PACKAGE_NAME "libsmb2")
+    set(PACKAGE_VERSION "${VERSION}")
+    set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
+    set(PACKAGE_TARNAME "${PACKAGE}")
+    set(PACKAGE_URL "https://github.com/sahlberg/libsmb2")
+  endif()
+  configure_file(libsmb2.pc.in libsmb2.pc @ONLY)
+endif()
+
+  if(NOT ESP_PLATFORM)
+    set(SOVERSION 7 CACHE STRING "" FORCE)
+    if(NOT IOP AND NOT BUILD_IRX)
+      set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
+      set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
+      set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
+      set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/cmake/libsmb2" CACHE PATH "Installation directory for cmake (.cmake) files")
+    endif()
+    if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR PS4 OR PS2 OR VITA OR CMAKE_SYSTEM_NAME MATCHES dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
+      option(BUILD_SHARED_LIBS "Build shared libraries" OFF)  
+    else()
+      option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+    endif()
+      option(ENABLE_EXAMPLES "Build example programs" OFF)
+      option(ENABLE_LIBKRB5 "Enable libkrb5 support" ON)
+      option(ENABLE_GSSAPI "Enable gssapi support" ON)
+      list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+  endif()
+
+  # Embedded platforms: libsmb2 only (share-enum NetrShareEnum 0/1/2).
+  # Full DCE/RPC is a separate library (libdcerpc) on full-size platforms.
+  # Windows: never build libdcerpc — its symbols collide with Microsoft RPC.
+  set(_SMB2_EMBEDDED_DCERPC FALSE)
+  if(ESP_PLATFORM OR PICO_BOARD OR IOP OR BUILD_IRX OR EE OR PS2 OR PS4 OR VITA)
+    set(_SMB2_EMBEDDED_DCERPC TRUE)
+  elseif(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|Nintendo3DS|dreamcast|NintendoGameCube|NintendoDS|NintendoWii|CafeOS")
+    set(_SMB2_EMBEDDED_DCERPC TRUE)
+  endif()
+
+  if(_SMB2_EMBEDDED_DCERPC)
+    set(ENABLE_LIBDCERPC OFF)
+    message(STATUS "Embedded platform: libsmb2 only (minimal DCE/RPC share enum)")
+  elseif(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Windows")
+    set(ENABLE_LIBDCERPC OFF)
+    message(STATUS "Windows: libdcerpc disabled (symbol collisions with Microsoft RPC)")
+  else()
+    if(NOT ESP_PLATFORM)
+      option(ENABLE_LIBDCERPC "Build libdcerpc (full DCE/RPC; depends on libsmb2)" ON)
+    endif()
+    if(ENABLE_LIBDCERPC)
+      message(STATUS "Build libdcerpc (full DCE/RPC interfaces)")
+    else()
+      message(STATUS "libdcerpc disabled; libsmb2 keeps NetrShareEnum 0/1/2 only")
+    endif()
+  endif()
+
+  # Kerberos. On Apple with GSS.framework, link only that framework (and
+  # Kerberos.framework); see the block below for why the two paths must
+  # not mix. Otherwise we use gss_* symbols from gssapi_krb5 and krb5_*
+  # symbols from krb5 directly (gssapi_krb5 only imports the latter, it
+  # does not define them). FindGSSAPI links krb5 too whenever it can
+  # find it separately, same as the autotools build; see its comments
+  # for why that's best-effort rather than required.
+  #
+  # This used to be probed on linux only, with ios looking for gssapi
+  # instead, so on macos and the BSDs the header check in ConfigureChecks
+  # still compiled the kerberos code in and then there was nothing to link
+  # it against. That is issue #413. It went unnoticed on linux because an
+  # ELF shared library may carry undefined symbols, while the macos linker
+  # refuses them.
+  if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android" OR IOS)
+    if(ENABLE_LIBKRB5 OR ENABLE_GSSAPI)
+      set(_SMB2_GSS_FRAMEWORK FALSE)
+      if(APPLE)
+        include(CheckIncludeFile)
+        check_include_file("GSS/GSS.h" HAVE_GSS_GSS_H)
+        if(HAVE_GSS_GSS_H)
+          set(_SMB2_GSS_FRAMEWORK TRUE)
+        endif()
+      endif()
+      if(_SMB2_GSS_FRAMEWORK)
+        # When GSS.framework is what we compile against, link *only* the
+        # framework (and Kerberos.framework for the krb5_* API), never
+        # -lgssapi_krb5/-lkrb5. Those plain library names are found by
+        # searching the whole library path, so on a system with a
+        # package manager (MacPorts, Homebrew, ...) they can just as
+        # easily resolve to a completely unrelated MIT/Heimdal krb5
+        # install as to Apple's own. That wouldn't just be untidy: it
+        # would run code compiled against GSS.framework's header (and
+        # gated on GSS.framework's specific limitations, e.g. no
+        # gss_set_neg_mechs, no s4u2self proxy credentials) against a
+        # different implementation that doesn't actually share those
+        # limitations. Frameworks are found via the framework search
+        # path, not -L, so this keeps header and implementation
+        # guaranteed to match, regardless of what else the library
+        # search path turns up.
+        set(core_DEPENDS "-framework GSS" "-framework Kerberos" CACHE STRING "" FORCE)
+      else()
+        find_package(GSSAPI)
+        if(GSSAPI_FOUND)
+          set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+        else()
+          # Compiling the kerberos paths in when there is no library to link
+          # them against only moves the failure to link time, so build
+          # without kerberos instead.
+          message(STATUS "gssapi_krb5 not found, building without Kerberos")
+          set(ENABLE_LIBKRB5 OFF)
+          set(ENABLE_GSSAPI OFF)
+        endif()
+      endif()
+    endif()
+  endif()
+
+  if(NOT ESP_PLATFORM)
+      include(cmake/ConfigureChecks.cmake)
+  endif()
+
+  if(PICO_BOARD)
+      include_directories(libsmb2 STATIC
+            ${PICO_SDK_PATH}/lib/lwip/src/include
+            ${PICO_SDK_PATH}/src/rp2_common/pico_lwip/include
+            lib
+            include
+            include/smb2
+            include/picow
+    )
+    elseif(ESP_PLATFORM)
+      set(COMPONENT_ADD_INCLUDEDIRS
+      "lib"
+      include
+      include/smb2
+      include/esp
+     )
+    else()
+      include_directories(${CMAKE_CURRENT_BINARY_DIR}
+                        include
+                        include/smb2
+      )
+    endif()
+    
+    if(MSVC AND BUILD_SHARED_LIBS)
+      # If we are building dll with msvc, then generate a def file according to the syms file
+      set(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
+      set(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
+      file(READ ${SYMS_FILE_PATH} EXPORT_SYMBOLS)
+      file(WRITE ${DEF_FILE_PATH} "LIBRARY smb2\nEXPORTS\n\n${EXPORT_SYMBOLS}")
+      # Pass def file to the linker
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEF:${DEF_FILE_PATH}")
+      if(ENABLE_LIBDCERPC)
+        set(DCERPC_SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/libdcerpc/libdcerpc.syms")
+        set(DCERPC_DEF_FILE_PATH "${PROJECT_BINARY_DIR}/libdcerpc/libdcerpc.def")
+        file(READ ${DCERPC_SYMS_FILE_PATH} DCERPC_EXPORT_SYMBOLS)
+        file(WRITE ${DCERPC_DEF_FILE_PATH} "LIBRARY dcerpc\nEXPORTS\n\n${DCERPC_EXPORT_SYMBOLS}")
+      endif()
+    endif()
+
+    if(CMAKE_SYSTEM_NAME MATCHES Windows)
+      list(APPEND CORE_LIBRARIES ws2_32.lib)
+      add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS -DHAVE_LINGER -DNEED_GETLOGIN_R -DNEED_GETPID -DNEED_RANDOM -DNEED_SRANDOM)
+    elseif(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch)
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
+    elseif(CMAKE_SYSTEM_NAME MATCHES Nintendo3DS)
+      add_definitions(-DARM11 -D_3DS -D__3DS__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
+    elseif(CMAKE_SYSTEM_NAME MATCHES NintendoDS)
+      add_definitions(-DNEED_READV -DHAVE_SOCKADDR_STORAGE -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL)
+    elseif(CMAKE_SYSTEM_NAME MATCHES NintendoGameCube)      
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL)
+    elseif(CMAKE_SYSTEM_NAME MATCHES NintendoWii)
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL)
+    elseif(CMAKE_SYSTEM_NAME MATCHES CafeOS)
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
+    elseif(PS4)
+      add_definitions(-DPS4_PLATFORM)
+      set(CMAKE_C_FLAGS "-funwind-tables")
+      #-fuse-init-array -emit-llvm broken...
+      set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")    
+      add_compile_options("${CMAKE_C_FLAGS}")
+    elseif(EE)
+      add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_WRITEV -DNEED_READV -DNEED_GETLOGIN_R)
+      if(EE AND PS2RPC)
+        add_definitions(-DPS2RPC)
+      endif()      
+    elseif(IOP)
+      add_definitions(-G 0 -DHAVE_CONFIG_H -DNEED_BE64TOH -DNEED_STRDUP -DNEED_READV -DNEED_WRITEV -DNEED_POLL -DNEED_GETPID -DNEED_RANDOM -DNEED_SRANDOM -DNEED_GETLOGIN_R -DHAVE_SYS_FCNTL_H)
+      if(IOP AND BUILD_IRX)
+        add_definitions(-D__ps2sdk_iop__)
+        if(DEBUG)
+          add_definitions(-DDEBUG)
+        endif()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fno-builtin")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")                
+      endif()
+      set(CMAKE_C_FLAGS "-Wall") 
+      include_directories(${CMAKE_CURRENT_BINARY_DIR} include/ps2)
+      add_compile_options("${CMAKE_C_FLAGS}")
+    elseif(VITA)
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)  
+    elseif(PICO_BOARD)
+      add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_GETLOGIN_R)
+    elseif(ESP_PLATFORM)    
+      if(NOT CMAKE_BUILD_EARLY_EXPANSION)
+        add_definitions(-DHAVE_CONFIG_H)
+      endif()
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_RANDOM -DNEED_SRANDOM)    
+    elseif(CMAKE_SYSTEM_NAME MATCHES dreamcast)
+      add_definitions(-DNEED_WRITEV -DNEED_READV -DHAVE_CONFIG_H -DNEED_GETLOGIN_R)             
+    elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
+      find_library(SOCKET_LIBRARY socket)
+      find_library(NSL_LIBRARY nsl)
+      list(APPEND CORE_LIBRARIES ${SOCKET_LIBRARY} ${NSL_LIBRARY})
+    endif()
+
+    # Look for a cryptographically strong source of random bytes for
+    # smb2_random_bytes(). Only probed on the host-like systems: anything we
+    # do not positively identify here simply falls back to the random()
+    # based path, so the console and embedded toolchains are left alone.
+    if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android")
+      include(CheckSymbolExists)
+      check_symbol_exists(arc4random_buf "stdlib.h" HAVE_ARC4RANDOM_BUF)
+      check_symbol_exists(getrandom "sys/random.h" HAVE_GETRANDOM)
+      if(HAVE_ARC4RANDOM_BUF)
+        add_definitions(-DHAVE_ARC4RANDOM_BUF)
+      endif()
+      if(HAVE_GETRANDOM)
+        add_definitions(-DHAVE_SYS_RANDOM_H -DHAVE_GETRANDOM)
+      endif()
+      if(EXISTS "/dev/urandom")
+        add_definitions(-DHAVE_DEV_URANDOM)
+      endif()
+    endif()
+
+
+    add_subdirectory(lib)
+    if(ENABLE_LIBDCERPC)
+      add_subdirectory(libdcerpc)
+    endif()
+
+    if(ENABLE_EXAMPLES)
+      add_subdirectory(examples)
+    endif()
+
+  # The packaging and install rules below need PROJECT_VERSION and the
+  # INSTALL_* paths, and neither is set for the pico or the esp-idf build.
+  if(NOT PICO_BOARD AND NOT ESP_PLATFORM)
+      include(CMakePackageConfigHelpers)
+      write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
+                                    VERSION ${PROJECT_VERSION}
+                                    COMPATIBILITY AnyNewerVersion)
+    if(NOT IOP AND NOT BUILD_IRX)
+      configure_file(cmake/libsmb2.pc.cmake
+                  ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc @ONLY)
+      if(ENABLE_LIBDCERPC)
+        configure_file(cmake/libdcerpc.pc.cmake
+                    ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc @ONLY)
+      endif()
+
+      install(DIRECTORY include/smb2
+            DESTINATION ${INSTALL_INC_DIR})
+      if(ENABLE_LIBDCERPC)
+        install(DIRECTORY include/dcerpc
+              DESTINATION ${INSTALL_INC_DIR})
+      endif()
+
+      install(FILES cmake/FindSMB2.cmake
+                  ${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
+            DESTINATION ${INSTALL_CMAKE_DIR})
+
+      install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc
+            DESTINATION ${INSTALL_PKGCONFIG_DIR})
+      if(ENABLE_LIBDCERPC)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc
+              DESTINATION ${INSTALL_PKGCONFIG_DIR})
+      endif()
+    endif()
+  endif() 
+

@@ -25,7 +25,7 @@
 ## Features
 
 - **XREAL One Compatible**: Live head tracking, connection status, and factory bias correction
-- **Flexible Source Input**: Open local files, `http(s)` video URLs, or share media links/files from other Android apps
+- **Flexible Source Input**: Open local files, `http(s)` video URLs, built-in SMB network shares, or share media links/files from other Android apps
 - **Guided Setup**: Flat-surface calibration first, then SBS readiness before entering the VR player
 - **In-Player Tracking Controls**: Recalibrate anytime, tune IMU sensitivity, and toggle IMU tracking on or off
 - **Runtime Projection FOV Tuning**: Adjust a shared `FOV` slider in Projection Settings and see changes immediately on phone and glasses
@@ -64,6 +64,7 @@ Phone-only playback is intentionally not supported. The app also does not change
 
 - Local video files
 - `http(s)` video URLs
+- SMB2/SMB3 network shares with video thumbnails, in-app browsing, and native high-throughput playback/seeking
 - Android share targets (video links/files)
 
 ## Install

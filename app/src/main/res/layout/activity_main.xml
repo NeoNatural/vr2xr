@@ -99,12 +99,12 @@
             android:text="@string/open_file" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/openCifsFolderButton"
+            android:id="@+id/openSmbShareButton"
             style="@style/Widget.Vr2xr.Launcher.PrimaryButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/launcher_section_spacing"
-            android:text="@string/open_cifs_folder" />
+            android:text="@string/open_smb_share" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/requirementsHelpButton"

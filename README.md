@@ -6,7 +6,7 @@
   <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-**vr2xr is an Android VR SBS video player for XREAL One and XREAL One Pro glasses.** It supports local files, HTTP(S) URLs, Android share intents, and SMB2/SMB3 network shares, with phone controls and IMU head tracking.
+**vr2xr Neo is an Android VR SBS video player for XREAL One and XREAL One Pro glasses.** It supports local files, HTTP(S) URLs, Android share intents, and SMB2/SMB3 network shares, with phone controls and IMU head tracking.
 
 This repository is a maintained fork of [Skarian/vr2xr](https://github.com/skarian/vr2xr). The original project and author are credited below; the fork-specific improvements are highlighted in [What this fork adds](#what-this-fork-adds).
 
@@ -128,4 +128,4 @@ The debug APK is generated under `app/build/outputs/apk/debug/`. More developmen
 
 vr2xr was created by [Neil Skaria](https://github.com/skarian). This fork is maintained and optimized by [NeoNatural](https://github.com/NeoNatural).
 
-See the original project at [Skarian/vr2xr](https://github.com/skarian/vr2xr) and this fork at [NeoNatural/vr2xr](https://github.com/NeoNatural/vr2xr).
+See the original project at [Skarian/vr2xr](https://github.com/skarian/vr2xr) and this fork at [NeoNatural/vr2xr-neo](https://github.com/NeoNatural/vr2xr-neo).

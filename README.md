@@ -1,14 +1,10 @@
 <p align="center">
-  <a href="https://buymeacoffee.com/skarian" target="_blank" rel="noopener noreferrer">
-    <img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;">
-  </a>
-</p>
-
-<p align="center">
   <img src="assets/banner.png" alt="vr2xr" width="100%">
 </p>
 
-**vr2xr is an Android app for watching VR SBS video on XREAL One glasses. It supports VR180 SBS content and focuses on simple, reliable playback with phone-based controls and IMU head tracking.**
+**vr2xr is an Android VR SBS video player for XREAL One and XREAL One Pro glasses.** It supports local files, HTTP(S) URLs, Android share intents, and SMB2/SMB3 network shares, with phone controls and IMU head tracking.
+
+This repository is a maintained fork of [Skarian/vr2xr](https://github.com/skarian/vr2xr). The original project and author are credited below; the fork-specific changes are documented in [Changes from the original project](#changes-from-the-original-project).
 
 ---
 
@@ -17,69 +13,105 @@
   &nbsp;
   <img src="./assets/screenshots/framed/02-calibration-framed.png" alt="vr2xr calibration setup" width="22%">
   &nbsp;
-  <img src="./assets/screenshots/framed/03-sbs-mode-framed.png" alt="vr2xr sbs mode setup" width="22%">
+  <img src="./assets/screenshots/framed/03-sbs-mode-framed.png" alt="vr2xr SBS mode setup" width="22%">
   &nbsp;
   <img src="./assets/screenshots/framed/04-player-framed.png" alt="vr2xr player controls" width="22%">
 </p>
 
 ## Features
 
-- **XREAL One Compatible**: Live head tracking, connection status, and factory bias correction
-- **Flexible Source Input**: Open local files, `http(s)` video URLs, built-in SMB network shares, or share media links/files from other Android apps
-- **Guided Setup**: Flat-surface calibration first, then SBS readiness before entering the VR player
-- **In-Player Tracking Controls**: Recalibrate anytime, tune IMU sensitivity, and toggle IMU tracking on or off
-- **Runtime Projection FOV Tuning**: Adjust a shared `FOV` slider in Projection Settings and see changes immediately on phone and glasses
-- **Phone Playback Controls**: On-phone controls for play/pause, 15-second seek, and timeline scrubbing
-- **Touchpad View Adjustment**: Drag to adjust view orientation with continuous edge auto-drag for smooth movement
-- **Durable Playback Sessions**: Handles output interruptions and resumes cleanly into the active playback session
+- **XREAL One support**: Live head tracking, connection status, factory bias correction, recalibration, adjustable IMU sensitivity, and an IMU tracking toggle
+- **Multiple video sources**: Local files, `http(s)` URLs, Android share intents, and built-in SMB2/SMB3 network shares
+- **SMB media browser**: Browse folders, show video thumbnails, sort by modification date, and remember multiple server profiles
+- **High-throughput SMB playback**: Native `libsmb2` random-access reading and seeking, with a `jcifs-ng` compatibility fallback
+- **Multiple VR180 projections**: Half equirectangular, fisheye equidistant, and fisheye equisolid projection
+- **Live projection tuning**: Change view FOV and fisheye lens FOV while playing; settings are saved locally
+- **Phone playback controls**: Play/pause, 15-second seek, timeline scrubbing, projection controls, and a touchpad for view adjustment
+- **Guided tracking setup**: Automatic calibration entry when needed, followed by an optional Full SBS reminder
+- **Durable playback sessions**: Playback pauses when glasses output disappears and can resume after the output returns
 
-## Player Controls
+## Changes from the original project
 
-<p align="center">
-  <img src="assets/controls-explained.png" alt="vr2xr player controls explained" width="75%">
-</p>
+The comparison baseline is the upstream `main` branch at [`52673c5`](https://github.com/skarian/vr2xr/commit/52673c58b376c96a19426bf2a1cff24bd0484685). Changes currently included in this fork are:
+
+| Area | Changes in this fork |
+| --- | --- |
+| Video sources | Added an in-app SMB2/SMB3 entry point and network-share browser. Local files continue to use Android's system document picker. |
+| SMB browsing | Added server/share/domain/account login, folder navigation, supported-video filtering, thumbnails, newest/oldest sorting, saved profiles, and profile removal. |
+| SMB playback | Added a Media3 SMB data source with buffered random access for playback and seeking. Native `libsmb2` is preferred for throughput; `jcifs-ng` is retained as a fallback. |
+| Credential privacy | Saved SMB passwords are encrypted with AES-GCM using a non-exportable Android Keystore key. Server metadata stays in the app's private storage. |
+| Projection modes | Added VR180 fisheye equidistant and fisheye equisolid rendering in addition to the original half-equirectangular mode. |
+| Projection controls | Added a fisheye lens-FOV control (`160°–220°`), expanded view-FOV control (`25°–175°`), fixed slider stepping, and persisted projection settings. |
+| Touchpad controls | Replaced continuous edge auto-drag with direct drag plus two-finger pinch-to-change-FOV. Added `FOV -` / `FOV +` buttons with 5° steps; double-tap recenters the view. |
+| Tracking flow | Calibration is opened automatically after glasses connect when no tracking stream exists. A selected video proceeds through calibration only when required, then to the Full SBS reminder. |
+| SBS reminder | Added a **Do not show this again** option for the Full SBS readiness screen. |
+| Launcher and player UI | Added the SMB action, changed requirements help to a labeled button, reorganized player controls, and updated project attribution in the app. |
+| Maintenance | Added unit coverage for tracking launch policy, SMB browsing/playback policy, and projection configuration; documented bundled third-party SMB components and privacy behavior. |
 
 ## Requirements
 
 - XREAL One or XREAL One Pro glasses
-- Android 13+ phone (`minSdk = 33`)
-- Samsung DeX desktop mode is not supported (use screen mirroring instead)
+- Android 13 or newer (`minSdk = 33`)
+- Samsung DeX desktop mode is not supported; use screen mirroring instead
 
-## App Guide
+Phone-only playback is intentionally unsupported. The app does not switch the glasses into SBS mode; that setting remains under user/device control.
 
-1. Connect your XREAL One glasses.
-2. Open a video from file, URL, or share.
-3. In setup step 1, place the glasses on a flat surface and run calibration.
-4. In setup step 2, put the glasses back on and switch `Display > 3D Mode` to `Full SBS`.
-5. Tap `Continue to VR Player` (the app applies Zero View automatically).
-6. Start playback and use phone controls for settings popups, play/pause, 15-second seek buttons, timeline drag/tap seeking, recenter, IMU sensitivity/tracking controls, projection `FOV` tuning, and continuous touchpad view drag.
+## App guide
 
-Samsung DeX warning: DeX desktop mode is not supported for playback. If DeX is on, turn it off and use screen mirroring.
+1. Connect the XREAL One or XREAL One Pro glasses.
+2. Select a source:
+   - tap **Open file** for Android's system file picker;
+   - enter an `http(s)` URL and tap **Open URL**;
+   - tap **Open SMB share** for a network share; or
+   - share a video link/file to vr2xr from another Android app.
+3. If calibration is required, place the glasses on a flat surface and tap **Run Calibration**.
+4. Put the glasses back on and set `Display > 3D Mode` to `Full SBS`. The reminder can be hidden for future launches.
+5. Tap **Continue to VR Player**. The app applies Zero View automatically.
+6. Use the phone controls to play, pause, seek, adjust projection, and change the view.
 
-If glasses are disconnected, playback pauses and waits for glasses output to return.
+If the glasses are disconnected during playback, the video pauses and waits for the glasses output to return.
 
-Phone-only playback is intentionally not supported. The app also does not change SBS mode on your glasses; SBS mode stays user/device controlled.
+## Player controls
 
-## Video Sources
+- **Single-finger drag**: Adjust yaw and pitch
+- **Two-finger pinch**: Change the view FOV continuously
+- **Double-tap**: Recenter the view
+- **FOV - / FOV +**: Change view FOV in 5° steps
+- **Glasses settings**: Recalibrate, change IMU sensitivity, or disable/enable IMU tracking
+- **Projection settings**: Select the projection model and tune view/lens FOV
+- **Playback row**: Seek backward/forward 15 seconds, play/pause, or scrub the timeline
 
-- Local video files
-- `http(s)` video URLs
-- SMB2/SMB3 network shares with video thumbnails, in-app browsing, and native high-throughput playback/seeking
-- Android share targets (video links/files)
+## SMB shares
 
-## Install
+Enter the server host/IP address and share name. Domain, username, and password are available for authenticated shares. Enable **Remember this account securely** to save the profile on the device; long-press a saved profile to remove it.
 
-Preferred: Join the Play Store closed test so we can reach the requirement of 12 testers for 14 consecutive days before public release.
+The browser shows folders and supported videos, generates thumbnails when possible, and can sort entries newest-first or oldest-first. Video data is read directly from the SMB server and is not copied to the developer or an intermediary service.
 
-1. Join the tester group: https://groups.google.com/g/vr2xr-testers
-2. Accept the testing invite: https://play.google.com/apps/testing/com.vr2xr
-3. Install the app from Play: https://play.google.com/store/apps/details?id=com.vr2xr
+## Build and test
 
-If you are not interested in becoming a tester, debug APKs are still published to versioned GitHub Releases when semantic tags (`v*.*.*`) are pushed.
-You can download `vr2xr.apk` from the release tag you want to install: https://github.com/skarian/vr2xr/releases
+Clone with submodules, or initialize them after cloning:
 
-For a shareable tester onboarding page, see `PLAY_STORE_TESTING.md`.
+```bash
+git submodule update --init --recursive
+```
 
-## For Developers
+Use JDK 17 plus the Android SDK/NDK configured by the project, then run:
 
-Development setup, build/test commands, diagnostics, and project structure are in `CONTRIBUTING.md`.
+```bash
+./gradlew testDebugUnitTest
+./gradlew assembleDebug
+```
+
+The debug APK is generated under `app/build/outputs/apk/debug/`. More development details are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Privacy and third-party components
+
+- See [`PRIVACY_POLICY.md`](PRIVACY_POLICY.md) for local data and SMB credential handling.
+- See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the bundled `libsmb2` source and the `jcifs-ng` dependency.
+- `libsmb2` is distributed under LGPL-2.1-or-later; the rest of the project remains subject to the licenses in this repository.
+
+## Credits
+
+vr2xr was created by [Neil Skaria](https://github.com/skarian). This fork is maintained and optimized by [NeoNatural](https://github.com/NeoNatural).
+
+See the original project at [Skarian/vr2xr](https://github.com/skarian/vr2xr) and this fork at [NeoNatural/vr2xr](https://github.com/NeoNatural/vr2xr).

@@ -2,6 +2,10 @@
   <img src="assets/banner.png" alt="vr2xr" width="100%">
 </p>
 
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
 **vr2xr is an Android VR SBS video player for XREAL One and XREAL One Pro glasses.** It supports local files, HTTP(S) URLs, Android share intents, and SMB2/SMB3 network shares, with phone controls and IMU head tracking.
 
 This repository is a maintained fork of [Skarian/vr2xr](https://github.com/skarian/vr2xr). The original project and author are credited below; the fork-specific changes are documented in [Changes from the original project](#changes-from-the-original-project).

@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Semantic release tag (vMAJOR.MINOR.PATCH)"
+        required: true
+        default: "v0.1.0"
+        type: string
 
 permissions:
   contents: write
@@ -11,10 +18,13 @@ permissions:
 jobs:
   build-and-publish-release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Set up Java
@@ -24,19 +34,29 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+      - name: Prepare signing and release metadata
+        run: |
+          echo "${{ secrets.VR2XR_UPLOAD_KEYSTORE_B64 }}" | base64 --decode > "$RUNNER_TEMP/vr2xr-upload.jks"
+          echo "VR2XR_UPLOAD_STORE_FILE=$RUNNER_TEMP/vr2xr-upload.jks" >> "$GITHUB_ENV"
+          echo "VR2XR_UPLOAD_STORE_PASSWORD=${{ secrets.VR2XR_UPLOAD_STORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "VR2XR_UPLOAD_KEY_ALIAS=${{ secrets.VR2XR_UPLOAD_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "VR2XR_UPLOAD_KEY_PASSWORD=${{ secrets.VR2XR_UPLOAD_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          ./tools/release/derive_android_version.sh "$RELEASE_TAG" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
 
       - name: Rename APK to stable filename
-        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/vr2xr.apk
+        run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/vr2xr.apk
 
       - name: Publish versioned release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: ${{ env.RELEASE_TAG }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: app/build/outputs/apk/debug/vr2xr.apk
+          files: app/build/outputs/apk/release/vr2xr.apk
           fail_on_unmatched_files: true
